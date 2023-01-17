@@ -64,7 +64,7 @@ class ConvVAE(nn.Module):
 
     def reparametrization(self, mu, log_std):
         std = torch.exp(log_std)
-        eps = torch.rand_like(std)
+        eps = torch.randn_like(std)
         z = mu + (eps*std)
         return z
 
@@ -108,8 +108,10 @@ def log_normal(z, mu, std):
 def final_loss(bce, z, mu, logstd):
     std = torch.exp(logstd)
     z = z.squeeze()
-    #kl = -0.5*torch.sum(1+logstd-mu**2-torch.exp(logstd))
-    kl = torch.sum(log_normal(z, mu, std) - log_normal(z, 0, 1))
+    z = torch.log(z)
+    kl = -0.5*torch.sum(1+logstd-mu**2-torch.exp(logstd))
+    #kl = torch.sum(log_normal(z, mu, std) - log_normal(z, 0, 1))
+    #kl = F.kl_div(z, torch.randn_like(z), reduction='sum')
     return kl+bce
 
 
@@ -124,7 +126,7 @@ def train(model, train_loader, optimizer, criterion, epoch):
         optimizer.zero_grad()
         re_pam, rec, mu, logstd = model(data)
         #bce = criterion(rec, data)
-        bce = F.cross_entropy(rec, data)
+        bce = F.mse_loss(rec, data, reduction='sum')
         loss = final_loss(bce, re_pam, mu, logstd)
         loss.backward()
         optimizer.step()
@@ -148,7 +150,7 @@ def test(model, test_loader, criterion):
             counter += 1
             re_pam, rec, mu, logstd = model(data)
             #bce = criterion(rec, data)
-            bce = F.cross_entropy(rec, data)
+            bce = F.mse_loss(rec, data, reduction='sum')
             test_loss += final_loss(bce, re_pam, mu, logstd).item()
             if counter == len(test_loader.dataset) // len(target):
                 print(counter)
@@ -163,7 +165,7 @@ def test(model, test_loader, criterion):
 model = ConvVAE().to(device)
 
 learning_rate = 0.001
-epochs = 5
+epochs = 50
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 criterion = nn.BCELoss()
 
