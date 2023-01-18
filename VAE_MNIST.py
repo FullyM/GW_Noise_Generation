@@ -155,11 +155,9 @@ def test(model, test_loader, criterion):
             if counter == len(test_loader.dataset) // len(target):
                 print(counter)
                 recon_images = rec
+                originals = data
         test_loss /= counter
-        if counter == len(test_loader.dataset)//len(target):
-            print(counter)
-            recon_images = rec
-    return test_loss, recon_images
+    return test_loss, recon_images, originals
 
 
 model = ConvVAE().to(device)
@@ -177,7 +175,7 @@ test_loss = []
 for epoch in range(1, epochs+1):
     print(f'Epoch {epoch} of {epochs}')
     epoch_train_loss = train(model, train_loader, optimizer, criterion, epoch)
-    epoch_test_loss, recon_images = test(model, test_loader, criterion)
+    epoch_test_loss, recon_images, original_images = test(model, test_loader, criterion)
     train_loss.append(epoch_train_loss)
     test_loss.append(epoch_test_loss)
 
@@ -192,6 +190,18 @@ for i in range(40):
   plt.xticks([])
   plt.yticks([])
 plt.savefig('MNIST_recon')
+
+
+fig = plt.figure(figsize=(20, 10))
+for i in range(40):
+  plt.subplot(5,8,i+1)
+  plt.tight_layout()
+  original_images = original_images.cpu()
+  plt.imshow(original_images[i][0], cmap='gray', interpolation='none')
+  #plt.title("Ground Truth: {}".format(example_targets[i]))
+  plt.xticks([])
+  plt.yticks([])
+plt.savefig('MNIST_originals')
 
 fig1 = plt.figure()
 plt.plot(train_loss)
