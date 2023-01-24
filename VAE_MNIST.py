@@ -5,9 +5,10 @@ import matplotlib.pyplot as plt
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import numpy as np
 
-batch_size_train = 64
-batch_size_test = 128
+batch_size_train = 128
+batch_size_test = 256
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 #device = 'cpu'
@@ -68,8 +69,8 @@ class ConvVAE(nn.Module):
         z = mu + (eps*std)
         return z
 
-    def forward(self, x):
-        # decoder
+    def forward_enc(self, x):
+        # encoder
         # first normal CNN architecture with 4 convolutions and 2 max pooling operations, all convolutions get activated by a relu
         x = F.relu(self.conv1(x))
         x = F.max_pool2d(x, kernel_size=2)
@@ -79,7 +80,9 @@ class ConvVAE(nn.Module):
         x = F.relu(self.conv4(x))
         x = x.flatten(start_dim=1)
         x = F.relu(self.fc1(x))      # fc output to learn features and representation
+        return x
 
+    def get_z(self, x):
         # now get mu and log_variance from the fc output
         x = x.view(-1, 2, 64)
         mu = self.mu_f(x[:, 0, :])
@@ -91,14 +94,16 @@ class ConvVAE(nn.Module):
 
         b, len = z.shape
         z = z.view(b, len, 1, 1)
+        return mu, log_std, z
 
+    def forward_dec(self, z):
         y = F.relu(self.tconv1(z))
         y = F.relu(self.tconv2(y))
         y = F.relu(self.tconv3(y))
         y = F.relu(self.tconv4(y))
         #y = torch.sigmoid(y)
 
-        return z, y, mu, log_std
+        return y
 
 
 def log_normal(z, mu, std):
@@ -121,13 +126,14 @@ def train(model, train_loader, optimizer, criterion, epoch):
     counter = 0
     for batch_idx, (data, target) in enumerate(train_loader):
         data = data.to(device)
-        target = target.to(device)
         counter += 1
         optimizer.zero_grad()
-        re_pam, rec, mu, logstd = model(data)
+        enc = model.forward_enc(data)
+        mu, logstd, z = model.get_z(enc)
+        rec = model.forward_dec(z)
         #bce = criterion(rec, data)
         bce = F.mse_loss(rec, data, reduction='sum')
-        loss = final_loss(bce, re_pam, mu, logstd)
+        loss = final_loss(bce, z, mu, logstd)
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
@@ -148,10 +154,12 @@ def test(model, test_loader, criterion):
         for data, target in test_loader:
             data = data.to(device)
             counter += 1
-            re_pam, rec, mu, logstd = model(data)
+            enc = model.forward_enc(data)
+            mu, logstd, z = model.get_z(enc)
+            rec = model.forward_dec(z)
             #bce = criterion(rec, data)
             bce = F.mse_loss(rec, data, reduction='sum')
-            test_loss += final_loss(bce, re_pam, mu, logstd).item()
+            test_loss += final_loss(bce, z, mu, logstd).item()
             if counter == len(test_loader.dataset) // len(target):
                 print(counter)
                 recon_images = rec
@@ -163,7 +171,7 @@ def test(model, test_loader, criterion):
 model = ConvVAE().to(device)
 
 learning_rate = 0.001
-epochs = 50
+epochs = 30
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 criterion = nn.BCELoss()
 
@@ -209,3 +217,26 @@ plt.plot(test_loss, c='orange')
 plt.xlabel('epoch')
 plt.savefig('Loss_plot')
 
+def gen_new(D=32, N=40):
+    z = np.random.multivariate_normal(np.zeros(D), np.diag(np.ones(D)), N)
+    z = torch.tensor(z, dtype=torch.float).to(device)
+    n, d = z.shape
+    z = z.view(n, d, 1, 1)
+    gen_images = model.forward_dec(z)
+    return gen_images
+
+
+generated_images = gen_new()
+generated_images = generated_images.cpu()
+generated_images = generated_images.detach()
+
+fig = plt.figure(figsize=(20, 10))
+for i in range(40):
+  plt.subplot(5,8,i+1)
+  plt.tight_layout()
+
+  plt.imshow(generated_images[i][0], cmap='gray', interpolation='none')
+  #plt.title("Ground Truth: {}".format(example_targets[i]))
+  plt.xticks([])
+  plt.yticks([])
+plt.savefig('MNIST_generations')
