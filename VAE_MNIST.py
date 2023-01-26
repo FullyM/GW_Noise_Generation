@@ -51,12 +51,14 @@ class ConvVAE(nn.Module):
         super(ConvVAE, self).__init__()
         self.conv1 = nn.Conv2d(1, 5, kernel_size=5, padding=2)
         self.conv2 = nn.Conv2d(5, 10, kernel_size=5, padding=2)
-        self.conv3 = nn.Conv2d(10, 15, kernel_size=5, padding=2)
-        self.conv4 = nn.Conv2d(15, 20, kernel_size=5, padding=2)
+        self.conv3 = nn.Conv2d(10, 20, kernel_size=5, padding=2)
+        print('pee pee poo poo')
+        #self.conv4 = nn.Conv2d(15, 20, kernel_size=5, padding=2)
         self.fc1 = nn.Linear(980, 128)
-        self.mu_f = nn.Linear(64, 32)
-        self.log_std_f = nn.Linear(64, 32)
-        self.fc2 = nn.Linear(32, 128)
+        self.mu_f = nn.Linear(16, 2)
+        self.log_std_f = nn.Linear(16, 2)
+        self.fc2 = nn.Linear(128, 32)
+        self.fc3 = nn.Linear(2, 32)
 
         self.tconv1 = nn.ConvTranspose2d(32, 16, kernel_size=5)
         self.tconv2 = nn.ConvTranspose2d(16, 8, kernel_size=5, stride=2)
@@ -77,50 +79,40 @@ class ConvVAE(nn.Module):
         x = F.relu(self.conv2(x))
         x = F.max_pool2d(x, kernel_size=2)
         x = F.relu(self.conv3(x))
-        x = F.relu(self.conv4(x))
         x = x.flatten(start_dim=1)
-        x = F.relu(self.fc1(x))      # fc output to learn features and representation
+        x = F.relu(self.fc1(x))  # fc output to learn features and representation
+        x = F.relu(self.fc2(x))
         return x
 
     def get_z(self, x):
         # now get mu and log_variance from the fc output
-        x = x.view(-1, 2, 64)
+        x = x.view(-1, 2, 16)
         mu = self.mu_f(x[:, 0, :])
         log_std = self.log_std_f(x[:, 1, :])
 
         # use the reparametrization trick to sample the latent space vector
         z = self.reparametrization(mu, log_std)
-        #z = self.fc2(z)     #
 
-        b, len = z.shape
-        z = z.view(b, len, 1, 1)
         return mu, log_std, z
 
     def forward_dec(self, z):
+        z = self.fc3(z)
+        b, len = z.shape
+        z = z.view(b, len, 1, 1)
         y = F.relu(self.tconv1(z))
         y = F.relu(self.tconv2(y))
         y = F.relu(self.tconv3(y))
         y = F.relu(self.tconv4(y))
-        #y = torch.sigmoid(y)
 
         return y
 
 
-def log_normal(z, mu, std):
-    p = 1/(z*std*torch.sqrt(2*torch.tensor(math.pi)))*torch.exp(-(torch.log(z-mu)**2)/(2*std**2))
-    return p
-
-def final_loss(bce, z, mu, logstd):
-    std = torch.exp(logstd)
-    z = z.squeeze()
-    z = torch.log(z)
+def final_loss(mse, mu, logstd):
     kl = -0.5*torch.sum(1+logstd-mu**2-torch.exp(logstd))
-    #kl = torch.sum(log_normal(z, mu, std) - log_normal(z, 0, 1))
-    #kl = F.kl_div(z, torch.randn_like(z), reduction='sum')
-    return kl+bce
+    return kl+mse
 
 
-def train(model, train_loader, optimizer, criterion, epoch):
+def train(model, train_loader, optimizer, epoch):
     model.train()
     total_loss = 0.0
     counter = 0
@@ -131,9 +123,8 @@ def train(model, train_loader, optimizer, criterion, epoch):
         enc = model.forward_enc(data)
         mu, logstd, z = model.get_z(enc)
         rec = model.forward_dec(z)
-        #bce = criterion(rec, data)
         bce = F.mse_loss(rec, data, reduction='sum')
-        loss = final_loss(bce, z, mu, logstd)
+        loss = final_loss(bce, mu, logstd)
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
@@ -146,7 +137,7 @@ def train(model, train_loader, optimizer, criterion, epoch):
     return total_loss
 
 
-def test(model, test_loader, criterion):
+def test(model, test_loader):
     model.eval()
     test_loss = 0.0
     counter = 0
@@ -157,11 +148,9 @@ def test(model, test_loader, criterion):
             enc = model.forward_enc(data)
             mu, logstd, z = model.get_z(enc)
             rec = model.forward_dec(z)
-            #bce = criterion(rec, data)
             bce = F.mse_loss(rec, data, reduction='sum')
-            test_loss += final_loss(bce, z, mu, logstd).item()
+            test_loss += final_loss(bce, mu, logstd).item()
             if counter == len(test_loader.dataset) // len(target):
-                print(counter)
                 recon_images = rec
                 originals = data
         test_loss /= counter
@@ -171,9 +160,8 @@ def test(model, test_loader, criterion):
 model = ConvVAE().to(device)
 
 learning_rate = 0.001
-epochs = 30
+epochs = 20
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-criterion = nn.BCELoss()
 
 grid_images = []
 
@@ -182,8 +170,8 @@ test_loss = []
 
 for epoch in range(1, epochs+1):
     print(f'Epoch {epoch} of {epochs}')
-    epoch_train_loss = train(model, train_loader, optimizer, criterion, epoch)
-    epoch_test_loss, recon_images, original_images = test(model, test_loader, criterion)
+    epoch_train_loss = train(model, train_loader, optimizer, epoch)
+    epoch_test_loss, recon_images, original_images = test(model, test_loader)
     train_loss.append(epoch_train_loss)
     test_loss.append(epoch_test_loss)
 
@@ -202,13 +190,13 @@ plt.savefig('MNIST_recon')
 
 fig = plt.figure(figsize=(20, 10))
 for i in range(40):
-  plt.subplot(5,8,i+1)
-  plt.tight_layout()
-  original_images = original_images.cpu()
-  plt.imshow(original_images[i][0], cmap='gray', interpolation='none')
-  #plt.title("Ground Truth: {}".format(example_targets[i]))
-  plt.xticks([])
-  plt.yticks([])
+    plt.subplot(5,8,i+1)
+    plt.tight_layout()
+    original_images = original_images.cpu()
+    plt.imshow(original_images[i][0], cmap='gray', interpolation='none')
+    # plt.title("Ground Truth: {}".format(example_targets[i]))
+    plt.xticks([])
+    plt.yticks([])
 plt.savefig('MNIST_originals')
 
 fig1 = plt.figure()
@@ -221,22 +209,39 @@ def gen_new(D=32, N=40):
     z = np.random.multivariate_normal(np.zeros(D), np.diag(np.ones(D)), N)
     z = torch.tensor(z, dtype=torch.float).to(device)
     n, d = z.shape
-    z = z.view(n, d, 1, 1)
+    #z = z.view(n, d, 1, 1)
     gen_images = model.forward_dec(z)
     return gen_images
 
 
-generated_images = gen_new()
+generated_images = gen_new(D=2)
 generated_images = generated_images.cpu()
 generated_images = generated_images.detach()
 
 fig = plt.figure(figsize=(20, 10))
 for i in range(40):
-  plt.subplot(5,8,i+1)
-  plt.tight_layout()
-
-  plt.imshow(generated_images[i][0], cmap='gray', interpolation='none')
-  #plt.title("Ground Truth: {}".format(example_targets[i]))
-  plt.xticks([])
-  plt.yticks([])
+    plt.subplot(5,8,i+1)
+    plt.tight_layout()
+    plt.imshow(generated_images[i][0], cmap='gray', interpolation='none')
+    #plt.title("Ground Truth: {}".format(example_targets[i]))
+    plt.xticks([])
+    plt.yticks([])
 plt.savefig('MNIST_generations')
+
+
+def plot_latent(model, data_loader, num_batches=100):
+    fig_latent = plt.figure()
+    for i, (data, target) in enumerate(data_loader):
+        x = model.forward_enc(data.to(device))
+        _, _, z = model.get_z(x)
+        z = z.to('cpu').detach().numpy()
+        plt.scatter(z[:, 0], z[:, 1], c=target, cmap='tab10')
+        if i > num_batches:
+            plt.colorbar()
+            break
+    plt.savefig('latent_plot')
+
+
+plot_latent(model, test_loader)
+
+
