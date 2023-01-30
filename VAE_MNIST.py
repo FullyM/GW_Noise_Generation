@@ -6,12 +6,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
+from torch.nn.init import kaiming_normal_ as kai
 
 batch_size_train = 128
 batch_size_test = 256
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-#device = 'cpu'
 
 
 train_loader = torch.utils.data.DataLoader(
@@ -49,21 +49,35 @@ for i in range(40):
 class ConvVAE(nn.Module):
     def __init__(self):
         super(ConvVAE, self).__init__()
-        self.conv1 = nn.Conv2d(1, 5, kernel_size=5, padding=2)
-        self.conv2 = nn.Conv2d(5, 10, kernel_size=5, padding=2)
-        self.conv3 = nn.Conv2d(10, 20, kernel_size=5, padding=2)
-        print('pee pee poo poo')
-        #self.conv4 = nn.Conv2d(15, 20, kernel_size=5, padding=2)
-        self.fc1 = nn.Linear(980, 128)
-        self.mu_f = nn.Linear(16, 2)
-        self.log_std_f = nn.Linear(16, 2)
-        self.fc2 = nn.Linear(128, 32)
+        self.conv1 = nn.Conv2d(1, 10, kernel_size=5, padding=2)
+        self.conv2 = nn.Conv2d(10, 20, kernel_size=5, padding=2)
+        # self.conv3 = nn.Conv2d(10, 20, kernel_size=5, padding=2)
+        # self.conv4 = nn.Conv2d(15, 20, kernel_size=5, padding=2)
+        self.fc1 = nn.Linear(980, 256)
+        self.mu_f = nn.Linear(64, 2)
+        self.log_std_f = nn.Linear(64, 2)
+        self.fc2 = nn.Linear(256, 128)
         self.fc3 = nn.Linear(2, 32)
 
         self.tconv1 = nn.ConvTranspose2d(32, 16, kernel_size=5)
         self.tconv2 = nn.ConvTranspose2d(16, 8, kernel_size=5, stride=2)
         self.tconv3 = nn.ConvTranspose2d(8, 4, kernel_size=4, stride=2)
         self.tconv4 = nn.ConvTranspose2d(4, 1, kernel_size=5, padding=2)
+
+        # weight initialisations
+        kai(self.conv1.weight)
+        kai(self.conv2.weight)
+        # kai(self.conv3.weight)
+        # kai(self.conv4.weight)
+        kai(self.fc1.weight)
+        kai(self.fc2.weight)
+        kai(self.fc3.weight)
+        kai(self.tconv1.weight)
+        kai(self.tconv2.weight)
+        kai(self.tconv3.weight)
+        kai(self.tconv4.weight)
+        kai(self.mu_f.weight)
+        kai(self.log_std_f.weight)
 
     def reparametrization(self, mu, log_std):
         std = torch.exp(log_std)
@@ -78,15 +92,15 @@ class ConvVAE(nn.Module):
         x = F.max_pool2d(x, kernel_size=2)
         x = F.relu(self.conv2(x))
         x = F.max_pool2d(x, kernel_size=2)
-        x = F.relu(self.conv3(x))
+        # x = F.relu(self.conv3(x))
         x = x.flatten(start_dim=1)
         x = F.relu(self.fc1(x))  # fc output to learn features and representation
-        x = F.relu(self.fc2(x))
+        x = self.fc2(x)
         return x
 
     def get_z(self, x):
         # now get mu and log_variance from the fc output
-        x = x.view(-1, 2, 16)
+        x = x.view(-1, 2, 64)
         mu = self.mu_f(x[:, 0, :])
         log_std = self.log_std_f(x[:, 1, :])
 
@@ -107,8 +121,50 @@ class ConvVAE(nn.Module):
         return y
 
 
+class LinVAE(nn.Module):
+
+    def __init__(self):
+        super(LinVAE, self).__init__()
+        self.lin1 = nn.Linear(28*28, 512)
+        self.lin2 = nn.Linear(512, 128)
+        #self.lin3 = nn.Linear(256, 128)
+        self.lin_mu = nn.Linear(64, 2)
+        self.lin_logstd = nn.Linear(64, 2)
+
+        self.tlin1 = nn.Linear(2, 512)
+        self.tlin2 = nn.Linear(512, 28*28)
+
+    def forward_enc(self, x):
+        x = x.flatten(start_dim=1)
+        x = F.relu(self.lin1(x))
+        x = self.lin2(x)
+        return x
+
+    def get_z(self, x):
+        b, l = x.shape
+        x = x.view(b, 2, int(l/2))
+        mu = self.lin_mu(x[:, 0, :])
+        logstd = self.lin_logstd(x[:, 1, :])
+        z = self.reparametrization(mu, logstd)
+        return mu, logstd, z
+
+    def reparametrization(self, mu, logstd):
+        eps = torch.randn_like(logstd)
+        std = torch.exp(logstd)
+        z = mu + std*eps
+        return z
+
+    def forward_dec(self, z):
+        y = F.relu(self.tlin1(z))
+        y = self.tlin2(y)
+        b, _ = y.shape
+        y = y.view(b, 1, 28, 28)
+        return y
+
+
 def final_loss(mse, mu, logstd):
-    kl = -0.5*torch.sum(1+logstd-mu**2-torch.exp(logstd))
+    kl = -0.5*torch.sum(1+logstd-mu**2-2*torch.exp(logstd))
+    #kl = (sigma ** 2 + mu ** 2 - torch.log(sigma) - 1 / 2).sum()
     return kl+mse
 
 
@@ -123,15 +179,15 @@ def train(model, train_loader, optimizer, epoch):
         enc = model.forward_enc(data)
         mu, logstd, z = model.get_z(enc)
         rec = model.forward_dec(z)
-        bce = F.mse_loss(rec, data, reduction='sum')
-        loss = final_loss(bce, mu, logstd)
+        mse = F.mse_loss(rec, data, reduction='sum')
+        loss = final_loss(mse, mu, logstd)
         loss.backward()
         optimizer.step()
-        total_loss += loss.item()
+        total_loss += loss.item()/len(data)
         if batch_idx % 100 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
-                       100. * batch_idx / len(train_loader), loss.item()))
+                       100. * batch_idx / len(train_loader), loss.item()/len(data)))
 
     total_loss /= counter
     return total_loss
@@ -148,8 +204,8 @@ def test(model, test_loader):
             enc = model.forward_enc(data)
             mu, logstd, z = model.get_z(enc)
             rec = model.forward_dec(z)
-            bce = F.mse_loss(rec, data, reduction='sum')
-            test_loss += final_loss(bce, mu, logstd).item()
+            mse = F.mse_loss(rec, data, reduction='sum')
+            test_loss += final_loss(mse, mu, logstd).item()/len(data)
             if counter == len(test_loader.dataset) // len(target):
                 recon_images = rec
                 originals = data
@@ -159,8 +215,9 @@ def test(model, test_loader):
 
 model = ConvVAE().to(device)
 
+
 learning_rate = 0.001
-epochs = 20
+epochs = 50
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 grid_images = []
@@ -185,7 +242,7 @@ for i in range(40):
   #plt.title("Ground Truth: {}".format(example_targets[i]))
   plt.xticks([])
   plt.yticks([])
-plt.savefig('MNIST_recon')
+plt.savefig('./ConvVAE/MNIST_recon')
 
 
 fig = plt.figure(figsize=(20, 10))
@@ -197,13 +254,13 @@ for i in range(40):
     # plt.title("Ground Truth: {}".format(example_targets[i]))
     plt.xticks([])
     plt.yticks([])
-plt.savefig('MNIST_originals')
+plt.savefig('./ConvVAE/MNIST_originals')
 
 fig1 = plt.figure()
 plt.plot(train_loss)
 plt.plot(test_loss, c='orange')
 plt.xlabel('epoch')
-plt.savefig('Loss_plot')
+plt.savefig('./ConvVAE/Loss_plot')
 
 def gen_new(D=32, N=40):
     z = np.random.multivariate_normal(np.zeros(D), np.diag(np.ones(D)), N)
@@ -226,10 +283,10 @@ for i in range(40):
     #plt.title("Ground Truth: {}".format(example_targets[i]))
     plt.xticks([])
     plt.yticks([])
-plt.savefig('MNIST_generations')
+plt.savefig('./ConvVAE/MNIST_generations')
 
 
-def plot_latent(model, data_loader, num_batches=100):
+def plot_latent(model, data_loader, num_batches=100, folder='./ConvVAE/'):
     fig_latent = plt.figure()
     for i, (data, target) in enumerate(data_loader):
         x = model.forward_enc(data.to(device))
@@ -239,9 +296,71 @@ def plot_latent(model, data_loader, num_batches=100):
         if i > num_batches:
             plt.colorbar()
             break
-    plt.savefig('latent_plot')
+    plt.savefig(folder+'latent_plot')
 
 
 plot_latent(model, test_loader)
 
 
+
+model = LinVAE().to(device)
+
+learning_rate = 0.001
+epochs = 50
+optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+grid_images = []
+
+train_loss = []
+test_loss = []
+
+for epoch in range(1, epochs+1):
+    print(f'Epoch {epoch} of {epochs}')
+    epoch_train_loss = train(model, train_loader, optimizer, epoch)
+    epoch_test_loss, recon_images, original_images = test(model, test_loader)
+    train_loss.append(epoch_train_loss)
+    test_loss.append(epoch_test_loss)
+
+fig = plt.figure(figsize=(20, 10))
+for i in range(40):
+  plt.subplot(5,8,i+1)
+  plt.tight_layout()
+  recon_images = recon_images.cpu()
+  plt.imshow(recon_images[i][0], cmap='gray', interpolation='none')
+  #plt.title("Ground Truth: {}".format(example_targets[i]))
+  plt.xticks([])
+  plt.yticks([])
+plt.savefig('./LinVAE/MNIST_recon_lin')
+
+fig = plt.figure(figsize=(20, 10))
+for i in range(40):
+    plt.subplot(5,8,i+1)
+    plt.tight_layout()
+    original_images = original_images.cpu()
+    plt.imshow(original_images[i][0], cmap='gray', interpolation='none')
+    # plt.title("Ground Truth: {}".format(example_targets[i]))
+    plt.xticks([])
+    plt.yticks([])
+plt.savefig('./LinVAE/MNIST_originals_lin')
+
+fig1 = plt.figure()
+plt.plot(train_loss)
+plt.plot(test_loss, c='orange')
+plt.xlabel('epoch')
+plt.savefig('./LinVAE/Loss_plot_lin')
+
+plot_latent(model, test_loader, folder='./LinVAE/')
+
+generated_images = gen_new(D=2)
+generated_images = generated_images.cpu()
+generated_images = generated_images.detach()
+
+fig = plt.figure(figsize=(20, 10))
+for i in range(40):
+    plt.subplot(5,8,i+1)
+    plt.tight_layout()
+    plt.imshow(generated_images[i][0], cmap='gray', interpolation='none')
+    #plt.title("Ground Truth: {}".format(example_targets[i]))
+    plt.xticks([])
+    plt.yticks([])
+plt.savefig('./LinVAE/MNIST_generations')
