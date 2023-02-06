@@ -50,13 +50,13 @@ class ConvVAE(nn.Module):
     def __init__(self):
         super(ConvVAE, self).__init__()
         self.conv1 = nn.Conv2d(1, 10, kernel_size=5, padding=2)
-        self.conv2 = nn.Conv2d(10, 20, kernel_size=5, padding=2)
+        self.conv2 = nn.Conv2d(10, 20, kernel_size=3, padding=1)
         # self.conv3 = nn.Conv2d(10, 20, kernel_size=5, padding=2)
         # self.conv4 = nn.Conv2d(15, 20, kernel_size=5, padding=2)
-        self.fc1 = nn.Linear(980, 256)
+        self.fc1 = nn.Linear(980, 128)
+        #self.fc2 = nn.Linear(256, 128)
         self.mu_f = nn.Linear(64, 2)
         self.log_std_f = nn.Linear(64, 2)
-        self.fc2 = nn.Linear(256, 128)
         self.fc3 = nn.Linear(2, 32)
 
         self.tconv1 = nn.ConvTranspose2d(32, 16, kernel_size=5)
@@ -67,10 +67,7 @@ class ConvVAE(nn.Module):
         # weight initialisations
         kai(self.conv1.weight)
         kai(self.conv2.weight)
-        # kai(self.conv3.weight)
-        # kai(self.conv4.weight)
         kai(self.fc1.weight)
-        kai(self.fc2.weight)
         kai(self.fc3.weight)
         kai(self.tconv1.weight)
         kai(self.tconv2.weight)
@@ -81,7 +78,7 @@ class ConvVAE(nn.Module):
 
     def reparametrization(self, mu, log_std):
         std = torch.exp(log_std)
-        eps = torch.randn_like(std)
+        eps = torch.randn_like(log_std)
         z = mu + (eps*std)
         return z
 
@@ -92,15 +89,15 @@ class ConvVAE(nn.Module):
         x = F.max_pool2d(x, kernel_size=2)
         x = F.relu(self.conv2(x))
         x = F.max_pool2d(x, kernel_size=2)
-        # x = F.relu(self.conv3(x))
         x = x.flatten(start_dim=1)
-        x = F.relu(self.fc1(x))  # fc output to learn features and representation
-        x = self.fc2(x)
+        x = self.fc1(x)  # fc output to learn features and representation
+        #x = self.fc2(x)
         return x
 
     def get_z(self, x):
         # now get mu and log_variance from the fc output
-        x = x.view(-1, 2, 64)
+        b, l = x.shape
+        x = x.view(b, 2, l//2)
         mu = self.mu_f(x[:, 0, :])
         log_std = self.log_std_f(x[:, 1, :])
 
@@ -142,7 +139,7 @@ class LinVAE(nn.Module):
 
     def get_z(self, x):
         b, l = x.shape
-        x = x.view(b, 2, int(l/2))
+        x = x.view(b, 2, l//2)
         mu = self.lin_mu(x[:, 0, :])
         logstd = self.lin_logstd(x[:, 1, :])
         z = self.reparametrization(mu, logstd)
