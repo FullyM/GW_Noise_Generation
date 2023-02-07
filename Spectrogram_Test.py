@@ -13,9 +13,12 @@ end = int(gps_time) - 30
 from gwpy.timeseries import TimeSeries
 data = TimeSeries.fetch_open_data('L1', start, end, verbose=True, cache=True)
 print(data.shape)
+data2 = data[100:1001]
+print(data2.shape)
+print(type(data2))
+print(data2.channel)
 
 plot = data.plot()
-plot.show()
 
 spectro = data.spectrogram(0.5, fftlength=0.1)**(1/2)
 
@@ -24,7 +27,7 @@ ax = plot_spec.gca()
 ax.set_yscale('log')
 ax.set_ylim(10, 2000)
 ax.colorbar(label=r'GW Amplitude')
-plot_spec.show()
+plot_spec.savefig('./Spectrogram_Plots/GW150914_Spec')
 
 normal_spectro = spectro.ratio('median')
 
@@ -33,7 +36,7 @@ ax_2 = plot_normal.gca()
 ax_2.set_yscale('log')
 ax_2.set_ylim(10, 2000)
 ax_2.colorbar(label=r'Normalised Amplitude')
-plot_normal.show()
+plot_normal.savefig('./Spectrogram_Plots/GW150914_Norm')
 
 data_pro = data.highpass(20)
 data_pro = data_pro.whiten(4, 2)
