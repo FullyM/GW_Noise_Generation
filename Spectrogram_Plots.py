@@ -2,10 +2,10 @@
 import time
 from gwpy.timeseries import TimeSeries
 
-print_file = open('prints_q.txt', mode='w')
+#print_file = open('prints_q.txt', mode='w')
 
 
-def plot_spectrogram(data, stride, fftlength, overlap=0., vmin=5e-24, vmax=1e-19, draw=False, save=True, name=None, timer=True, print_file=print_file, zoom_low=0., zoom_high=0., density=False, q=False):
+def plot_spectrogram(data, stride, fftlength, overlap=0., vmin=5e-24, vmax=1e-19, draw=False, save=True, name=None, timer=True, print_file=None, zoom_low=0., zoom_high=0., density=False, q=False):
     '''
     Basic function to plot spectrograms of given GW strain data. Rough implementation, please refer to the variable explanations. Will break if print_file is not specified outside of the function. Will plot the spectrogram
     using the ASD by taking the square root of the spectrogram method output.
@@ -34,12 +34,12 @@ def plot_spectrogram(data, stride, fftlength, overlap=0., vmin=5e-24, vmax=1e-19
     t1 = time.perf_counter()
     spec_calc_time = t1-t0
 
-    print(f'The Spectrogram has dimensions {spectrogram.shape} for a time series of length {data.duration:0.0f} with stride {stride:0.6f} and fftlength ', file=print_file) # print_file needs to exist, otherwise remove this
+    print(f'The Spectrogram has dimensions {spectrogram.shape} for a time series of length {data.duration:0.0f} with stride {stride:0.6f} and fftlength') # print_file needs to exist, otherwise remove this
 
     duration = data.duration
 
     if timer:
-        print(f'The Spectrogram calculation took {spec_calc_time:0.2f} seconds for {duration:0.0f} of data', file=print_file)   # print_file needs to exist, remove this if print statemens should not be logged in a .txt file
+        print(f'The Spectrogram calculation took {spec_calc_time:0.2f} seconds for {duration:0.0f} of data')   # print_file needs to exist, remove this if print statemens should not be logged in a .txt file
     if not density:
         spec_plot = spectrogram.imshow(vmin=vmin, vmax=vmax)
         ax = spec_plot.gca()
@@ -67,8 +67,8 @@ def plot_spectrogram(data, stride, fftlength, overlap=0., vmin=5e-24, vmax=1e-19
     if draw:
         spec_plot.show()
     if save:
-        spec_plot.savefig(name+'Spectrogram')
-        time_plot.savefig(name+'Timeseries')
+        spec_plot.savefig('./Q_Plots/'+name+'Spectrogram')
+        time_plot.savefig('./Q_Plots/'+name+'Timeseries')
 
     return spectrogram
 
@@ -135,4 +135,4 @@ Spec_Chirp = plot_spectrogram(GW200224_Chirp, 1/16, 1/32, overlap=7/256, name='G
 
 # TODO add data and construct the spectrogram for a known glitch?
 
-print_file.close()
+#print_file.close()

@@ -3,9 +3,10 @@ from Spectrogram_Plots import pre_processing, plot_spectrogram
 import numpy as np
 
 
-GW_Noise = TimeSeries.fetch_open_data('L1', 'Mar 18 2020 09:00:00', 'Mar 18 2020 09:20:00', cache=True, verbose=True)
+GW_Noise = TimeSeries.fetch_open_data('L1', 'Mar 18 2020 09:00:00', 'Mar 18 2020 09:10:00', cache=True, verbose=True)
 
-GW_Noise_proc = GW_Noise  # pre_processing(GW_Noise, min_freq=20)
+#GW_Noise_proc = GW_Noise
+GW_Noise_proc = pre_processing(GW_Noise, min_freq=20, max_freq=1000, fftlength=4, overlap=1)#, low_bound=GW_Noise.t0.value+60, high_bound=GW_Noise.t0.value+(19*60))
 GW_Noise_proc = GW_Noise_proc[100:-100]
 
 GW_Noise = []
@@ -18,8 +19,5 @@ print(type(GW_Noise[0]))
 
 GW_Noise_q = []
 for i in range(10):
-    print(GW_Noise[i])
-    GW_Noise_q.append(GW_Noise[i].q_transform())
-
-print(len(GW_Noise_q))
+    plot_spectrogram(GW_Noise[i], stride=0, fftlength=0, name='Test_'+str(i)+'_', timer=False, q=True)
 
