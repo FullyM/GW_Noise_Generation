@@ -5,8 +5,7 @@ import numpy as np
 
 GW_Noise = TimeSeries.fetch_open_data('L1', 'Mar 18 2020 09:00:00', 'Mar 18 2020 09:10:00', cache=True, verbose=True)
 
-#GW_Noise_proc = GW_Noise
-GW_Noise_proc = pre_processing(GW_Noise, min_freq=20, max_freq=1000, fftlength=4, overlap=1)#, low_bound=GW_Noise.t0.value+60, high_bound=GW_Noise.t0.value+(19*60))
+GW_Noise_proc = pre_processing(GW_Noise, min_freq=20, max_freq=1000, fftlength=4, overlap=1)
 GW_Noise_proc = GW_Noise_proc[100:-100]
 
 GW_Noise = []
