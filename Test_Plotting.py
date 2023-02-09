@@ -18,15 +18,15 @@ GW200224_Chirp = TimeSeries.fetch_open_data('L1', 'Feb 24 2020 22:00:00', 'Feb 2
 GW200224_Chirp = pre_processing(GW200224_Chirp, min_freq=20, fftlength=2, overlap=1, low_bound=1266618080, high_bound=1266618180)
 
 
-Spectrogram_1s = plot_spectrogram(GW_200322_1s, 1/64, 3/256, overlap=2/256, name='GW_200322_1s_', print_file=print_file)
+Spectrogram_1s = plot_spectrogram(GW_200322_1s, 1/64, 3/256, overlap=2/256, name='GW_200322_1s_', print_file=print_file, verbose=True)
 
-Spectrogram_120s = plot_spectrogram(GW_200322_120s, 0.1, None, overlap=0.01, name='GW_200322_120s_', print_file=print_file)
+Spectrogram_120s = plot_spectrogram(GW_200322_120s, 0.1, None, overlap=0.01, name='GW_200322_120s_', print_file=print_file, verbose=True)
 
-Spectrogram_90m = plot_spectrogram(GW_200322_90m, 1, 0.5, overlap=0.25, name='GW_200322_90m_', print_file=print_file)
+Spectrogram_90m = plot_spectrogram(GW_200322_90m, 1, 0.5, overlap=0.25, name='GW_200322_90m_', print_file=print_file, verbose=True)
 
-Spectrogram_Chirp = plot_spectrogram(GW_200322_Chirp, 1/32, 1/64, name='GW_200322_Chirp_q_', zoom_low=1268903510.8, zoom_high=1268903511.8, density=True, q=True, print_file=print_file)
+Spectrogram_Chirp = plot_spectrogram(GW_200322_Chirp, 1/32, 1/64, name='GW_200322_Chirp_q_', zoom_low=1268903510.8, zoom_high=1268903511.8, density=True, q=True, print_file=print_file, verbose=True)
 
-Spec_Chirp = plot_spectrogram(GW200224_Chirp, 1/16, 1/32, overlap=7/256, name='GW200224_Chirp_q_', zoom_low=1266618172, zoom_high=1266618173, density=True, q=True, print_file=print_file)
+Spec_Chirp = plot_spectrogram(GW200224_Chirp, 1/16, 1/32, overlap=7/256, name='GW200224_Chirp_q_', zoom_low=1266618172, zoom_high=1266618173, density=True, q=True, print_file=print_file, verbose=True)
 
 print_file.close()
 
