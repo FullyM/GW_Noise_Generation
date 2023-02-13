@@ -1,10 +1,6 @@
 # Script with functions to create GW strain data spectrogram plots
 import time
 
-
-
-
-
 def plot_spectrogram(data, stride, fftlength, overlap=0., vmin=5e-24, vmax=1e-19, draw=False, save=True, name=None, print_file=None, zoom_low=0., zoom_high=0., density=False, q=False, verbose=False):
     '''
     Basic function to plot spectrograms of given GW strain data. Rough implementation, please refer to the variable explanations. Will break if print_file is not specified outside of the function. Will plot the spectrogram
@@ -30,7 +26,7 @@ def plot_spectrogram(data, stride, fftlength, overlap=0., vmin=5e-24, vmax=1e-19
         spectrogram = data.spectrogram(stride, fftlength, overlap=overlap, window='tukey')**(1/2)       # taking the square root to work with the ASD
         # spectrogram = spectrogram.crop_frequencies(20)
     if q:
-        spectrogram = data.q_transform(tres=0.01)
+        spectrogram = data.q_transform(qrange=(8, 32))
     t1 = time.perf_counter()
     spec_calc_time = t1-t0
 
@@ -105,10 +101,4 @@ def pre_processing(data, min_freq=0., max_freq=0., low_bound=0., high_bound=0., 
     pro_data = data
 
     return pro_data
-
-
-
-
-
-
 
