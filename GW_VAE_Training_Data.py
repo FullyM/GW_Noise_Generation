@@ -1,6 +1,8 @@
 from gwpy.timeseries import TimeSeries
 from Spectrogram_Plots import pre_processing, plot_spectrogram
 import PIL
+import numpy as np
+import matplotlib.pyplot as plt
 
 GW_Noise = TimeSeries.fetch_open_data('L1', 'Mar 18 2020 09:00:00', 'Mar 18 2020 09:10:00', cache=True, verbose=True)
 
@@ -45,3 +47,8 @@ for i in range(10):
 
 print(pixel_val_resized[0][0])
 print(len(pixel_val_resized[0]))
+pixel_val_resized = np.array(pixel_val_resized)
+print(pixel_val_resized.shape)
+test_pixel = pixel_val_resized.reshape(10, 4, 128, 128)
+print(test_pixel.shape)
+print(test_pixel[0])

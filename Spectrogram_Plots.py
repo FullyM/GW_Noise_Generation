@@ -1,5 +1,7 @@
 # Script with functions to create GW strain data spectrogram plots
 import time
+import matplotlib.pyplot as plt
+
 
 def plot_spectrogram(data, stride, fftlength, overlap=0., vmin=5e-24, vmax=1e-19, draw=False, save=True, name=None, print_file=None, zoom_low=0., zoom_high=0., density=False, q=False, verbose=False):
     '''
@@ -37,11 +39,11 @@ def plot_spectrogram(data, stride, fftlength, overlap=0., vmin=5e-24, vmax=1e-19
 
     if verbose:
         print(f'The Spectrogram calculation took {spec_calc_time:0.2f} seconds for {duration:0.0f} of data', file=print_file)   # print_file needs to exist, remove this if print statemens should not be logged in a .txt file
+
     if not density:
         spec_plot = spectrogram.imshow(vmin=vmin, vmax=vmax)
         ax = spec_plot.gca()
         ax.set_yscale('log')
-        ax.set_ylim(20, 2000)
         if zoom_high != 0:                                      # with current implementation can only zoom when zoom_high is not 0, can not individually change the lower bound
             ax.set_xlim(zoom_low, zoom_high)
         # hardcoded label of the colourbar, need to change here
@@ -49,12 +51,15 @@ def plot_spectrogram(data, stride, fftlength, overlap=0., vmin=5e-24, vmax=1e-19
 
     else:
         spec_plot = spectrogram.plot(cmap='viridis', yscale='log')
-        ax = spec_plot.gca()
-        ax.set_ylim(20, 2000)
+        fig = plt.figure(spec_plot, frameon=False)
+        fig.set_size_inches(1, 1)
+        ax = fig.gca()
+        ax.set_axis_off()
+        fig.subplots_adjust(left=0, top=1, bottom=0, right=1)
         if zoom_high != 0:  # with current implementation can only zoom when zoom_high is not 0, can not individually change the lower bound
             ax.set_xlim(zoom_low, zoom_high)
         # hardcoded label of the colourbar, need to change here
-        ax.colorbar(label=r'Strain ASD')
+        #ax.colorbar(label=r'Strain ASD')
 
     time_plot = data.plot()
     ax = time_plot.gca()
@@ -64,7 +69,7 @@ def plot_spectrogram(data, stride, fftlength, overlap=0., vmin=5e-24, vmax=1e-19
     if draw:
         spec_plot.show()
     if save:
-        spec_plot.savefig('./Q_Plots/'+name+'Spectrogram')
+        fig.savefig('./Q_Plots/'+name+'Spectrogram', dpi=128)
         time_plot.savefig('./Q_Plots/'+name+'Timeseries')
 
     return spectrogram
