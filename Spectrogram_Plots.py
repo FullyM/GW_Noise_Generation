@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 def plot_spectrogram(data, stride, fftlength, overlap=0., vmin=5e-24, vmax=1e-19, draw=False, save=True, name=None, print_file=None, zoom_low=0., zoom_high=0., density=False, q=False, verbose=False):
     '''
     Basic function to plot spectrograms of given GW strain data. Rough implementation, please refer to the variable explanations. Will break if print_file is not specified outside of the function. Will plot the spectrogram
-    using the ASD by taking the square root of the spectrogram method output.
+    using the ASD by taking the square root of the spectrogram method output. Old function that is very convoluted that was mostly used for test spectrograms and to test how long a q-transform takes etc.. For generation of
+    spectrogram training samples please use q_plot function.
     :param data: gwpy.Timeseries timeseries data
     :param stride: time domain bin width of the spectrogram
     :param fftlength: frequeny domain bin width of the spectrogram
@@ -75,7 +76,7 @@ def plot_spectrogram(data, stride, fftlength, overlap=0., vmin=5e-24, vmax=1e-19
     return spectrogram
 
 
-def pre_processing(data, min_freq=0., max_freq=0., low_bound=0., high_bound=0., fftlength=None, overlap=0.):
+def pre_processing(data, min_freq=None, max_freq=None, low_bound=None, high_bound=None, fftlength=None, overlap=0.1):
     '''
     Function which bundles various pre-processing methods for gwpy.Timeseries timeseries objects for pre-processing
     :param data:
@@ -88,22 +89,69 @@ def pre_processing(data, min_freq=0., max_freq=0., low_bound=0., high_bound=0., 
     :return:
     '''
 
-    if min_freq != 0 and max_freq != 0:
+    if min_freq and max_freq:
         data = data.bandpass(min_freq, max_freq)
 
-    elif max_freq != 0:
+    elif max_freq:
         data = data.lowpass(max_freq)
 
-    elif min_freq != 0:
+    elif min_freq:
         data = data.highpass(min_freq)
 
-    if fftlength is not None:
+    if fftlength:
         data = data.whiten(fftlength, overlap)
 
-    if high_bound != 0:
+    if high_bound:
         data = data.crop(low_bound, high_bound)
 
     pro_data = data
 
     return pro_data
 
+
+def plot_q(data, name, q_range=None, f_range=(0, 10000), whiten=True, f_duration=2., show=False, labels=False,
+           zoom=None, im_size=(1, 1), dpi=128):
+    '''
+    Function to calculate the Q-Transform of given gwpy.timeseries.Timeseries object and directly create and save a plot
+    of the corresponding spectrogram. Has the option to either produce a mostly normal plot or produces an image of the
+    spectrogram without any plot elements i.e. axis, border, labels etc.. Implemented for the purpose of generating
+    training samples for generative model training.
+    :param data: gwpy.timeseries.Timeseries object, data of which the q-transform should get calculated
+    :param name: string, mandatory, name of the file which will contain the plotted spectrogram
+    :param q_range: tuple of float, optional, range of q's to use for the transform, inverse relation to range of
+                    frequencies displayed in the spectrogram, unrelated to f_range
+    :param f_range: tuple of floats, optional, range of frequencies to consider for the q-transform, currently not
+                    implemented, uses gwpy default, can be easily changed in the function below
+    :param whiten: boolean, optional, if the data should be whitened before the q-transform
+    :param f_duration: float, optional, length of the timeseries used to estimate the PSD for whitening
+    :param show: boolean, optional, if set to True will show the plotted spectrogram
+    :param labels: boolean, optional, if set to True will return only the spectrogram and no plot labels or axis
+    :param zoom: tuple of floats, optional, can specify a time range for the spectrogram plot
+    :param im_size: tuple of floats, optional, the size of the returned image
+    :param dpi: int, optional, the dpi of the saved image
+    :return: gwpy.timeseries.Spectrogram object, containing the q-transformed input timeseries object
+    '''
+
+    q = data.q_transform(qrange=q_range, whiten=whiten, fduration=f_duration)
+
+    q_plot = q.plot(cmap='viridis', yscale='log')
+    fig = plt.figure(q_plot, frameon=labels)  # frameon argument specifies if the figure has a frame or not
+
+    if labels:                      # if one wants a normal plot, not suited for training data
+        ax = q_plot.gca()
+        if zoom:
+            ax.set_xlim(zoom)
+        ax.colorbar(label='Strain')  # colorbar label is hardcoded here, rarely used so needs to be manually set here
+
+    else:
+        fig.set_size_inches(im_size)
+        ax = fig.gca()
+        ax.set_axis_off()  # turn of all axis elements
+        fig.subplots_adjust(left=0, top=1, bottom=0, right=1)  # removes white borders around the plotted image
+
+    if show:
+        fig.show()
+
+    fig.savefig('./Q_Plots/'+name+'Spectrogram', dpi=dpi)  # target directory Q_Plots needs to exist already
+
+    return q
