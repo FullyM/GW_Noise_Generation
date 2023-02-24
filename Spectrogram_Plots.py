@@ -109,8 +109,8 @@ def pre_processing(data, min_freq=None, max_freq=None, low_bound=None, high_boun
     return pro_data
 
 
-def plot_q(data, name, q_range=None, f_range=(0, 10000), whiten=True, f_duration=2., show=False, labels=False,
-           zoom=None, im_size=(1, 1), dpi=128):
+def plot_q(data, name, dir_name, q_range=None, whiten=True, f_duration=2., show=False, labels=False,
+           zoom=None, im_size=(1, 1), dpi=128, **kwargs):
     '''
     Function to calculate the Q-Transform of given gwpy.timeseries.Timeseries object and directly create and save a plot
     of the corresponding spectrogram. Has the option to either produce a mostly normal plot or produces an image of the
@@ -118,10 +118,11 @@ def plot_q(data, name, q_range=None, f_range=(0, 10000), whiten=True, f_duration
     training samples for generative model training.
     :param data: gwpy.timeseries.Timeseries object, data of which the q-transform should get calculated
     :param name: string, mandatory, name of the file which will contain the plotted spectrogram
+    :param dir_name: string, mandatory, name of the output directory the files will be stored in
     :param q_range: tuple of float, optional, range of q's to use for the transform, inverse relation to range of
                     frequencies displayed in the spectrogram, unrelated to f_range
-    :param f_range: tuple of floats, optional, range of frequencies to consider for the q-transform, currently not
-                    implemented, uses gwpy default, can be easily changed in the function below
+    :param f_range: tuple of floats, optional, range of frequencies to consider for the q-transform, can be specified in
+                    kwargs argument
     :param whiten: boolean, optional, if the data should be whitened before the q-transform
     :param f_duration: float, optional, length of the timeseries used to estimate the PSD for whitening
     :param show: boolean, optional, if set to True will show the plotted spectrogram
@@ -132,7 +133,7 @@ def plot_q(data, name, q_range=None, f_range=(0, 10000), whiten=True, f_duration
     :return: gwpy.timeseries.Spectrogram object, containing the q-transformed input timeseries object
     '''
 
-    q = data.q_transform(qrange=q_range, whiten=whiten, fduration=f_duration)
+    q = data.q_transform(qrange=q_range, whiten=whiten, fduration=f_duration, **kwargs)
 
     q_plot = q.plot(cmap='viridis', yscale='log')
     fig = plt.figure(q_plot, frameon=labels)  # frameon argument specifies if the figure has a frame or not
@@ -152,6 +153,6 @@ def plot_q(data, name, q_range=None, f_range=(0, 10000), whiten=True, f_duration
     if show:
         fig.show()
 
-    fig.savefig('./Q_Plots/'+name+'Spectrogram', dpi=dpi)  # target directory Q_Plots needs to exist already
+    fig.savefig('./'+dir_name+'/'+name, dpi=dpi)  # target directory Q_Plots needs to exist already
 
     return q
