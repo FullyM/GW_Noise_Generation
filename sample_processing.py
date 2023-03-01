@@ -31,10 +31,12 @@ def sample_processing(detector, start_time, end_time, sample_duration, dir_name,
 
     samples = np.array([])
     sample_length = sample_duration*time_series1.sample_rate.value
+    sample_length = int(sample_length)
     sample_number = len(time_series1)//sample_length
+    sample_number = int(sample_number)
     for i in range(1, sample_number+1):
-        np.append(samples, time_series1[(i-1)*sample_length:i*sample_length])
+        samples.append(time_series1[(i-1)*sample_length:i*sample_length])
 
-    spectrograms = np.array([])
+    spectrograms = []
     for i in range(sample_number):
-        np.append(spectrograms, plot_q(samples[i], name='sample_'+str(i), dir_name=dir_name, **q_kws))
+        spectrograms.append(plot_q(samples[i], name='sample_'+str(i), dir_name=dir_name, **q_kws))

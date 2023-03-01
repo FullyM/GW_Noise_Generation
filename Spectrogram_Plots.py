@@ -109,7 +109,7 @@ def pre_processing(data, min_freq=None, max_freq=None, low_bound=None, high_boun
     return pro_data
 
 
-def plot_q(data, name, dir_name, q_range=None, whiten=True, f_duration=2., show=False, labels=False,
+def plot_q(data, name, dir_name, q_range=None, whiten=True, f_duration=0.1, show=False, labels=False,
            zoom=None, im_size=(1, 1), dpi=128, **kwargs):
     '''
     Function to calculate the Q-Transform of given gwpy.timeseries.Timeseries object and directly create and save a plot
