@@ -29,7 +29,7 @@ def sample_processing(detector, start_time, end_time, sample_duration, dir_name,
                           host='datafind.gw-openscience.org', on_gaps='error')
     time_series1 = TimeSeries.read(file_url1, f'{detector}1:GWOSC-4KHZ_R1_STRAIN', start=start_time, end=end_time)
 
-    samples = np.array([])
+    samples = []
     sample_length = sample_duration*time_series1.sample_rate.value
     sample_length = int(sample_length)
     sample_number = len(time_series1)//sample_length
@@ -37,6 +37,5 @@ def sample_processing(detector, start_time, end_time, sample_duration, dir_name,
     for i in range(1, sample_number+1):
         samples.append(time_series1[(i-1)*sample_length:i*sample_length])
 
-    spectrograms = []
     for i in range(sample_number):
-        spectrograms.append(plot_q(samples[i], name='sample_'+str(i), dir_name=dir_name, **q_kws))
+        plot_q(samples[i], name='sample_'+str(i), dir_name=dir_name, **q_kws)

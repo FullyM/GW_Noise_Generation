@@ -150,9 +150,10 @@ def plot_q(data, name, dir_name, q_range=None, whiten=True, f_duration=0.1, show
         ax.set_axis_off()  # turn of all axis elements
         fig.subplots_adjust(left=0, top=1, bottom=0, right=1)  # removes white borders around the plotted image
 
+    fig.savefig('./'+dir_name+'/'+name, dpi=dpi)  # target directory Q_Plots needs to exist already
+
     if show:
         fig.show()
-
-    fig.savefig('./'+dir_name+'/'+name, dpi=dpi)  # target directory Q_Plots needs to exist already
+        q_plot.show()
 
     return q
