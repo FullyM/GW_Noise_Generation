@@ -17,12 +17,12 @@ GW_Noise_q = []
 for i in range(30):
     if i % 10 == 0:
         print('Calculating Q-Transform for Data '+str(i))
-    GW_Noise_q.append(plot_q(GW_Noise[i], name='Test_'+str(i)+'_', dir_name='Q_Plots', q_range=(8, 32), f_duration=2.))
+    GW_Noise_q.append(plot_q(GW_Noise[i], name='Test_'+str(i), dir_name='Q_Plots', q_range=(8, 32), f_duration=2.))
 
 im = []
 image_dir = './Q_Plots/'
 for i in range(len(GW_Noise_q)):
-    im.append(PIL.Image.open(image_dir+'Test_'+str(i)+'_Spectrogram.png', 'r'))
+    im.append(PIL.Image.open(image_dir+'Test_'+str(i)+'.png', 'r'))
 
 
 pixel_val = []

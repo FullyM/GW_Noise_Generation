@@ -1,6 +1,7 @@
 # Script with functions to create GW strain data spectrogram plots
 import time
 import matplotlib.pyplot as plt
+import gc
 
 
 def plot_spectrogram(data, stride, fftlength, overlap=0., vmin=5e-24, vmax=1e-19, draw=False, save=True, name=None, print_file=None, zoom_low=0., zoom_high=0., density=False, q=False, verbose=False):
@@ -155,5 +156,7 @@ def plot_q(data, name, dir_name, q_range=None, whiten=True, f_duration=0.1, show
     if show:
         fig.show()
         q_plot.show()
+        plt.close('all')
 
+    gc.collect()
     return q
