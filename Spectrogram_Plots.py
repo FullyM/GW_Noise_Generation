@@ -137,6 +137,8 @@ def plot_q(data, name, dir_name, q_range=None, whiten=True, f_duration=0.1, show
     q = data.q_transform(qrange=q_range, whiten=whiten, fduration=f_duration, **kwargs)
 
     q_plot = q.plot(cmap='viridis', yscale='log')
+    # this might be slightly illegal, forcing gwpy.plot object into matplotlib figure, might be the cause for the
+    # memory leak mentioned below, though I don't know of a better way to do it, it works for now
     fig = plt.figure(q_plot, frameon=labels)  # frameon argument specifies if the figure has a frame or not
 
     if labels:                      # if one wants a normal plot, not suited for training data
@@ -156,7 +158,7 @@ def plot_q(data, name, dir_name, q_range=None, whiten=True, f_duration=0.1, show
     if show:
         fig.show()
         q_plot.show()
-        plt.close('all')
+        plt.close('all')  # need to close all figures to prevent memory bloat
 
-    gc.collect()
+    gc.collect()  # for some reason closing the figures is not enough, need to manually garbage collect
     return q
