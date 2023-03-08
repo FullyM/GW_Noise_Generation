@@ -1,4 +1,3 @@
-import math
 import torch
 import torchvision
 import matplotlib.pyplot as plt
@@ -45,6 +44,7 @@ for i in range(40):
     plt.xticks([])
     plt.yticks([])
 #plt.savefig('MNIST_print')
+
 
 class ConvVAE(nn.Module):
     def __init__(self):
@@ -108,8 +108,8 @@ class ConvVAE(nn.Module):
 
     def forward_dec(self, z):
         z = self.fc3(z)
-        b, len = z.shape
-        z = z.view(b, len, 1, 1)
+        b, l = z.shape
+        z = z.view(b, l, 1, 1)
         y = F.relu(self.tconv1(z))
         y = F.relu(self.tconv2(y))
         y = F.relu(self.tconv3(y))

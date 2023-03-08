@@ -1,7 +1,102 @@
+import matplotlib.pyplot as plt
+import gc
+from gwpy.timeseries import TimeSeries
+from gwdatafind import find_urls
 import torch
 import torchvision
 import glob
 import h5py
+
+
+def plot_q(data, name, dir_name, q_range=None, whiten=True, f_duration=0.1, show=False, labels=False,
+           zoom=None, im_size=(1, 1), dpi=128, **kwargs):
+    '''
+    Function to calculate the Q-Transform of given gwpy.timeseries.Timeseries object and directly create and save a plot
+    of the corresponding spectrogram. Has the option to either produce a mostly normal plot or produces an image of the
+    spectrogram without any plot elements i.e. axis, border, labels etc.. Implemented for the purpose of generating
+    training samples for generative model training.
+    :param data: gwpy.timeseries.Timeseries object, data of which the q-transform should get calculated
+    :param name: string, mandatory, name of the file which will contain the plotted spectrogram
+    :param dir_name: string, mandatory, name of the output directory the files will be stored in
+    :param q_range: tuple of float, optional, range of q's to use for the transform, inverse relation to range of
+                    frequencies displayed in the spectrogram, unrelated to f_range
+    :param f_range: tuple of floats, optional, range of frequencies to consider for the q-transform, can be specified in
+                    kwargs argument
+    :param whiten: boolean, optional, if the data should be whitened before the q-transform
+    :param f_duration: float, optional, length of the timeseries used to estimate the PSD for whitening
+    :param show: boolean, optional, if set to True will show the plotted spectrogram
+    :param labels: boolean, optional, if set to True will return only the spectrogram and no plot labels or axis
+    :param zoom: tuple of floats, optional, can specify a time range for the spectrogram plot
+    :param im_size: tuple of floats, optional, the size of the returned image
+    :param dpi: int, optional, the dpi of the saved image
+    :return: gwpy.timeseries.Spectrogram object, containing the q-transformed input timeseries object
+    '''
+
+    q = data.q_transform(qrange=q_range, whiten=whiten, fduration=f_duration, **kwargs)
+
+    q_plot = q.plot(cmap='viridis', yscale='log')
+    # this might be slightly illegal, forcing gwpy.plot object into matplotlib figure, might be the cause for the
+    # memory leak mentioned below, though I don't know of a better way to do it, it works for now
+    fig = plt.figure(q_plot, frameon=labels)  # frameon argument specifies if the figure has a frame or not
+
+    if labels:                      # if one wants a normal plot, not suited for training data
+        ax = q_plot.gca()
+        if zoom:
+            ax.set_xlim(zoom)
+        ax.colorbar(label='Strain')  # colorbar label is hardcoded here, rarely used so needs to be manually set here
+
+    else:
+        fig.set_size_inches(im_size)
+        ax = fig.gca()
+        ax.set_axis_off()  # turn of all axis elements
+        fig.subplots_adjust(left=0, top=1, bottom=0, right=1)  # removes white borders around the plotted image
+
+    fig.savefig('./'+dir_name+'/'+name, dpi=dpi)  # target directory Q_Plots needs to exist already
+
+    if show:
+        fig.show()
+        q_plot.show()
+        plt.close('all')  # need to close all figures to prevent memory bloat
+
+    gc.collect()  # for some reason closing the figures is not enough, need to manually garbage collect
+    return q
+
+
+def sample_processing(detector, start_time, end_time, sample_duration, dir_name, **q_kws):
+    '''
+    Composite function that downloads data of a specified detector with specified start and end times from GWOSC using
+    CVMFS, and then divides it into equal siced chunks of data with duration sample_duration. These data chunks
+    are then Q-Transformed using the plot_q function, which also plots the spectrogram, without plot axis or borders
+    by default. Used to create and save samples for deep learning training.
+    :param detector: string, mandatory, takes either 'H', 'L' or 'V' and refers to the corresponding the detector
+    :param start_time: int, mandatory, specifies the start time of the dataset to be downloaded, the specified timeframe
+                        between start and end time must have no gaps in the data, otherwise will give back an error
+    :param end_time: int, mandatory, specified the end time of the dataset to be downloaded, the specified timeframe
+                     between start and end times must have no gaps in the data, otherwise will return an error
+    :param sample_duration: float, mandatory, duration of the individual samples to be produced
+    :param dir_name: string, mandatory, name of the directory in which the produced spectrograms should be saved,
+                     needs to already exist, if not in the current directory must give the path without starting and end
+                     '/'
+    :param q_kws: keyword arguments to be passed to the plot_q function, for possible arguments look at
+                  Spectrogram_Plots.py, where the function is implemented
+    :return: Returns nothing, but saves the spectrograms to the specified directory, named 'sample_n' where n is the
+             number of the sample
+    '''
+
+    file_url1 = find_urls(f'{detector}', f'{detector}1_GWOSC_O3b_4KHZ_R1', start_time, end_time,
+                          host='datafind.gw-openscience.org', on_gaps='error')
+    time_series1 = TimeSeries.read(file_url1, f'{detector}1:GWOSC-4KHZ_R1_STRAIN', start=start_time, end=end_time)
+
+    samples = []
+    sample_length = sample_duration*time_series1.sample_rate.value
+    sample_length = int(sample_length)
+    sample_number = len(time_series1)//sample_length
+    sample_number = int(sample_number)
+    for i in range(1, sample_number+1):
+        samples.append(time_series1[(i-1)*sample_length:i*sample_length])
+
+    for i in range(sample_number):
+        plot_q(samples[i], name='sample_'+str(i), dir_name=dir_name, **q_kws)
 
 
 def convert_png2h5(img_dir, h5_name, im_size):
