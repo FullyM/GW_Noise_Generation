@@ -155,11 +155,14 @@ class NoiseDataSet(torch.utils.data.Dataset):
             self.labels = group.get(self.labels_key)
 
         image = self.dataset[item]
+        # need to transpose because torchvision ToTensor will transpose again and usually this format is expected
+        image = image.transpose((2, 0, 1))
         label = torch.tensor(self.labels[item])
 
         if self.transform:
             image = self.transform(image)
         else:
+            # this will return int tensors with values [0, 255]
             image = torch.tensor(image)
 
         return image, label

@@ -1,7 +1,9 @@
 import torch
 import matplotlib.pyplot as plt
 import torch.nn as nn
-import torch.functional as F
+import torch.nn.functional as F
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 class ConvVAE(nn.Module):
@@ -69,9 +71,9 @@ def train(model, train_loader, optimizer, epoch):
         data = data.to(device)
         counter += 1
         optimizer.zero_grad()
-        enc = model.forward_enc(data)
-        mu, logstd, z = model.get_z(enc)
-        rec = model.forward_dec(z)
+        enc = model.enc(data)
+        mu, logstd, z = model.sample_z(enc)
+        rec = model.dec(z)
         mse = F.mse_loss(rec, data, reduction='sum')
         loss = ELBO(mse, mu, logstd)
         loss.backward()
@@ -86,20 +88,20 @@ def train(model, train_loader, optimizer, epoch):
     return total_loss
 
 
-def test(model, test_loader):
+def val(model, val_loader):
     model.eval()
     test_loss = 0.0
     counter = 0
     with torch.no_grad():
-        for data, target in test_loader:
+        for data, target in val_loader:
             data = data.to(device)
             counter += 1
-            enc = model.forward_enc(data)
-            mu, logstd, z = model.get_z(enc)
-            rec = model.forward_dec(z)
+            enc = model.enc(data)
+            mu, logstd, z = model.sample_z(enc)
+            rec = model.dec(z)
             mse = F.mse_loss(rec, data, reduction='sum')
             test_loss += ELBO(mse, mu, logstd).item()/len(data)
-            if counter == len(test_loader.dataset) // len(target):
+            if counter == len(val_loader.dataset) // len(target):
                 recon_images = rec
                 originals = data
         test_loss /= counter
