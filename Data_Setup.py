@@ -6,6 +6,7 @@ import torch
 import torchvision
 import glob
 import h5py
+import numpy as np
 
 
 def plot_q(data, name, dir_name, q_range=None, whiten=True, f_duration=0.1, show=False, labels=False,
@@ -111,21 +112,25 @@ def convert_png2h5(img_dir, h5_name, im_size):
     :return: returns nothing, produces a h5 file saved in the current directory
     '''
 
-    img_width = im_size[0]
-    img_height = im_size[1]
+    img_height = im_size[0]
+    img_width = im_size[1]
 
     h5_file = h5_name+'.h5'
 
-    n_files = len(glob.glob('./'+img_dir+'/*.png'))  # This cycles over all .png files contained in the given directory
+    n_files = len(glob.glob('./'+img_dir+'/*.png'))  # This scans ALL .png files contained in the given directory
 
     with h5py.File(h5_file, 'w') as h5:
-        img_ds = h5.create_dataset('./samples', shape=(n_files, 3, img_width, img_height),  # shape for RGB images
-                                   dtype=int)
+        img_ds = h5.create_dataset('./samples', shape=(n_files, img_height, img_width, 3),  # shape for RGB images
+                                   dtype=np.uint8)  # uint8 better interacts with torchvision to_tensor
         label_ds = h5.create_dataset('./labels', shape=(n_files,), dtype=int)  # placeholder labels of image numbers
         h5.attrs['length'] = n_files
         for num, file in enumerate(glob.iglob('./'+img_dir+'/*.png')):
-            img = torchvision.io.read_image(file, mode=torchvision.io.ImageReadMode.RGB)  # hardcoded ReadMode
-            img_ds[num:num+1:, :, :] = img
+            image = torchvision.io.read_image(file, mode=torchvision.io.ImageReadMode.RGB)  # hardcoded ReadMode
+            # torchvision read_image reads in the image as CxHxW but generally images should be read in as HxWxC
+            # this unnecessary transposing is O(1) complexity so no computational cost
+            image = image.transpose(1, 0)
+            image = image.transpose(1, 2)
+            img_ds[num:num+1:, :, :] = image
             label_ds[num] = num  # change labels here
 
 
@@ -135,7 +140,8 @@ class NoiseDataSet(torch.utils.data.Dataset):
     with hardcoded dataset keys etc. Takes the path of the h5 file and possible transforms. Already returns pytorch
     tensors. Inspired by https://github.com/sara-nl/Packed-Data-Formats/blob/master/datasets.py
     '''
-    def __init__(self, path, transform=None):
+    def __init__(self, path, transform):
+        # transform should almost always be at least torchvision.transforms.ToTensor(), set to None for no transform
         self.path = path
         self.transform = transform
 
@@ -144,7 +150,6 @@ class NoiseDataSet(torch.utils.data.Dataset):
         self.labels_key = 'labels'
 
         with h5py.File(self.path, 'r') as file:
-            # will this clash with the splitting of the dataset?
             self.dataset_len = file.attrs['length']  # needs the h5 file to have length saved as an attribute
 
     def __getitem__(self, item):
@@ -155,16 +160,16 @@ class NoiseDataSet(torch.utils.data.Dataset):
             self.labels = group.get(self.labels_key)
 
         image = self.dataset[item]
-        # need to transpose because torchvision ToTensor will transpose again and usually this format is expected
-        image = image.transpose((2, 0, 1))
         label = torch.tensor(self.labels[item])
 
         if self.transform:
+            # defaults to torchvision.transforms.ToTensor for transposing and rescaling to [0, 1.], needs to be kept
             image = self.transform(image)
         else:
+            # to at least ensure expected dimensions of CxHxW
+            image = image.transpose((2, 0, 1))
             # this will return int tensors with values [0, 255]
             image = torch.tensor(image)
-
         return image, label
 
     def __len__(self):
@@ -175,7 +180,8 @@ def construct_dataloaders(path, train_batch_size, val_batch_size, test_batch_siz
                           splits=[0.7, 0.2, 0.1], shuffle=True):
     '''
     Constructs the dataloaders for the custom spectrogram dataset above. Will produce 3 dataloaders for training,
-    validation and test samples.
+    validation and test samples. This expects the .h5 file with the data to already exist. If the data does not exist
+    yet, use convert_png2h5 first.
     :param path: string, path to the h5 file containing the samples, relative to the current directory
     :param train_batch_size: int, batch size for training samples
     :param val_batch_size: int, batch size for validation samples

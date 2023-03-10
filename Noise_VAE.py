@@ -9,19 +9,19 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 class ConvVAE(nn.Module):
     def __init__(self):
         super(ConvVAE, self).__init__()
-        self.conv1 = nn.Conv2d(3, 10, kernel_size=8, stride=2)
+        self.conv1 = nn.Conv2d(3, 10, kernel_size=9)
         self.conv2 = nn.Conv2d(10, 20, kernel_size=5, stride=2)
-        self.conv3 = nn.Conv2d(20, 30, kernel_size=2, stride=2)
+        self.conv3 = nn.Conv2d(20, 30, kernel_size=3, stride=2)
 
-        self.fc1 = nn.Linear(13*13, 64)
+        self.fc1 = nn.Linear(6*6*30, 64)
         # self.fc2 = nn.Linear(128, 64)
 
         self.mu_f = nn.Linear(32, 8)
         self.logstd_f = nn.Linear(32, 8)
 
-        self.tconv1 = nn.ConvTranspose2d(8, 6, kernel_size=10)
-        self.tconv2 = nn.ConvTranspose2d(6, 4, kernel_size=10, stride=3)
-        self.tconv3 = nn.ConvTranspose2d(4, 3, kernel_size=10, stride=3)
+        self.tconv1 = nn.ConvTranspose2d(8, 6, kernel_size=9)
+        self.tconv2 = nn.ConvTranspose2d(6, 4, kernel_size=8, stride=4)
+        self.tconv3 = nn.ConvTranspose2d(4, 3, kernel_size=5, stride=3, padding=3)
 
     def reparametrize(self, mu, logstd):
         std = torch.exp(logstd)
@@ -29,13 +29,13 @@ class ConvVAE(nn.Module):
         z = mu + (eps*std)
         return z
 
-    def sample_z(self, x, mu, logstd):
+    def sample_z(self, x):
         b, l = x.shape
         x = x.view(b, 2, l // 2)
         mu = self.mu_f(x[:, 0, :])
-        log_std = self.log_std_f(x[:, 1, :])
+        log_std = self.logstd_f(x[:, 1, :])
 
-        z = self.reparametrization(mu, log_std)
+        z = self.reparametrize(mu, log_std)
 
         return mu, log_std, z
 
@@ -55,6 +55,7 @@ class ConvVAE(nn.Module):
         z = F.relu(self.tconv1(z))
         z = F.relu(self.tconv2(z))
         z = F.relu(self.tconv3(z))
+        print(z.shape)
         return z
 
 
@@ -79,7 +80,7 @@ def train(model, train_loader, optimizer, epoch):
         loss.backward()
         optimizer.step()
         total_loss += loss.item()/len(data)
-        if batch_idx % 100 == 0:
+        if batch_idx % 20 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                        100. * batch_idx / len(train_loader), loss.item()/len(data)))
