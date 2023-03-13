@@ -9,19 +9,20 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 class ConvVAE(nn.Module):
     def __init__(self):
         super(ConvVAE, self).__init__()
-        self.conv1 = nn.Conv2d(3, 10, kernel_size=9)
-        self.conv2 = nn.Conv2d(10, 20, kernel_size=5, stride=2)
-        self.conv3 = nn.Conv2d(20, 30, kernel_size=3, stride=2)
+        self.conv1 = nn.Conv2d(3, 10, kernel_size=9, padding=4)
+        self.conv2 = nn.Conv2d(10, 20, kernel_size=5, stride=2, padding=2)
+        self.conv3 = nn.Conv2d(20, 30, kernel_size=3, stride=2, padding=1)
+        self.conv4 = nn.Conv2d(30, 40, kernel_size=3, padding=1)
 
-        self.fc1 = nn.Linear(6*6*30, 64)
+        self.fc1 = nn.Linear(4*4*40, 128)
         # self.fc2 = nn.Linear(128, 64)
 
-        self.mu_f = nn.Linear(32, 8)
-        self.logstd_f = nn.Linear(32, 8)
+        self.mu_f = nn.Linear(64, 32)
+        self.logstd_f = nn.Linear(64, 32)
 
-        self.tconv1 = nn.ConvTranspose2d(8, 6, kernel_size=9)
-        self.tconv2 = nn.ConvTranspose2d(6, 4, kernel_size=8, stride=4)
-        self.tconv3 = nn.ConvTranspose2d(4, 3, kernel_size=5, stride=3, padding=3)
+        self.tconv1 = nn.ConvTranspose2d(32, 16, kernel_size=10)
+        self.tconv2 = nn.ConvTranspose2d(16, 8, kernel_size=8, stride=4)
+        self.tconv3 = nn.ConvTranspose2d(8, 3, kernel_size=5, stride=3, padding=3)
 
     def reparametrize(self, mu, logstd):
         std = torch.exp(logstd)
@@ -45,7 +46,9 @@ class ConvVAE(nn.Module):
         x = F.relu(self.conv2(x))
         x = F.max_pool2d(x, kernel_size=2)
         x = F.relu(self.conv3(x))
-        x = x.flatten()
+        x = F.max_pool2d(x, kernel_size=2)
+        x = F.relu(self.conv4(x))
+        x = x.flatten(start_dim=1)
         x = self.fc1(x)
         return x
 

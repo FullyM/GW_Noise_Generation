@@ -35,10 +35,10 @@ for epoch in range(1, epochs+1):
 
 
 fig = plt.figure(figsize=(20, 10))
+recon_images = recon_images.cpu().numpy().transpose((0, 2, 3, 1))
 for i in range(40):
   plt.subplot(5,8,i+1)
   plt.tight_layout()
-  recon_images = recon_images.cpu().numpy().transpose((1, 2, 0))
   plt.imshow(recon_images[i], interpolation='none')
   plt.xticks([])
   plt.yticks([])
@@ -46,10 +46,10 @@ for i in range(40):
 
 
 fig = plt.figure(figsize=(20, 10))
+original_images = original_images.cpu().numpy().transpose((0, 2, 3, 1))
 for i in range(40):
     plt.subplot(5,8,i+1)
     plt.tight_layout()
-    original_images = original_images.cpu().numpy().transpose((1, 2, 0))
     plt.imshow(original_images[i], interpolation='none')
     # plt.title("Ground Truth: {}".format(example_targets[i]))
     plt.xticks([])
