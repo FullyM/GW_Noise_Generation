@@ -1,3 +1,4 @@
 from Data_Setup import sample_processing
 
-sample_processing('H', 1256665088, 1256677375, 2, 'Spectrograms', q_range=(8, 32), f_duration=0.5, show=True)
+sample_processing('H', 1258631168, 1258754047, 2, 'Spectrograms', q_range=(10, 100), frange=(20, 1200),
+                  f_duration=1, show=True, method='welch')
