@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from Noise_VAE import train, val
 from Data_Setup import construct_dataloaders
 import torch.optim as optim
+from torch.utils.tensorboard import SummaryWriter
 
 # Need to use ToTensor here in order to reshape the images into the correct shape and scale to [0, 1.] as this makes
 # training easier and torch by default only accepts floats as input
@@ -14,6 +15,7 @@ train_loader, val_loader, test_loader = construct_dataloaders('./Data/samples.h5
                                                               transform=torchvision.transforms.ToTensor())
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+writer = SummaryWriter()
 
 model = Noise_VAE.ConvVAE().to(device)
 
@@ -30,6 +32,10 @@ for epoch in range(1, epochs+1):
     print(f'Epoch {epoch} of {epochs}')
     epoch_train_loss = train(model, train_loader, optimizer, epoch)
     epoch_val_loss, recon_images, original_images = val(model, val_loader)
+    writer.add_scalar('Loss/train', epoch_train_loss)
+    writer.add_scalar('Loss/validation', epoch_val_loss)
+    writer.add_images('Originals', original_images.cpu()[:20], epoch)
+    writer.add_images('Reconstructions', recon_images.cpu[:20], epoch)
     train_loss.append(epoch_train_loss)
     val_loss.append(epoch_val_loss)
 

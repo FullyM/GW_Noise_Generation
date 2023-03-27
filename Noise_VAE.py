@@ -105,7 +105,8 @@ def val(model, val_loader):
             rec = model.dec(z)
             mse = F.mse_loss(rec, data, reduction='sum')
             test_loss += ELBO(mse, mu, logstd).item()/len(data)
-            if counter == len(val_loader.dataset) // len(target):
+            if counter == len(val_loader.dataset) // len(target):  # last batch of validation loop
+                # get reconstruction samples and corresponding original images
                 recon_images = rec
                 originals = data
         test_loss /= counter
