@@ -177,11 +177,11 @@ class NoiseDataSet(torch.utils.data.Dataset):
 
 
 def construct_dataloaders(path, train_batch_size, val_batch_size, test_batch_size, transform=None,
-                          splits=[0.7, 0.2, 0.1], shuffle=True):
+                          splits=[0.7, 0.2, 0.1], shuffle=True, **kwargs):
     '''
     Constructs the dataloaders for the custom spectrogram dataset above. Will produce 3 dataloaders for training,
     validation and test samples. This expects the .h5 file with the data to already exist. If the data does not exist
-    yet, use convert_png2h5 first.
+    yet, use convert_png2h5 first. Accepts keyword arguments for the DataLoader class.
     :param path: string, path to the h5 file containing the samples, relative to the current directory
     :param train_batch_size: int, batch size for training samples
     :param val_batch_size: int, batch size for validation samples
@@ -194,8 +194,9 @@ def construct_dataloaders(path, train_batch_size, val_batch_size, test_batch_siz
 
     data = NoiseDataSet(path, transform=transform)
     train_data, val_data, test_data = torch.utils.data.random_split(data, splits)
-    train_loader = torch.utils.data.DataLoader(train_data, batch_size=train_batch_size, shuffle=shuffle)
-    val_loader = torch.utils.data.DataLoader(val_data, batch_size=val_batch_size, shuffle=shuffle)
-    test_loader = torch.utils.data.DataLoader(test_data, batch_size=test_batch_size, shuffle=shuffle)
+
+    train_loader = torch.utils.data.DataLoader(train_data, batch_size=train_batch_size, shuffle=shuffle, **kwargs)
+    val_loader = torch.utils.data.DataLoader(val_data, batch_size=val_batch_size, shuffle=shuffle, **kwargs)
+    test_loader = torch.utils.data.DataLoader(test_data, batch_size=test_batch_size, shuffle=shuffle, **kwargs)
 
     return train_loader, val_loader, test_loader

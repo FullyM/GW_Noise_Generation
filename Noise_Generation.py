@@ -10,9 +10,11 @@ from torch.utils.tensorboard import SummaryWriter
 
 # Need to use ToTensor here in order to reshape the images into the correct shape and scale to [0, 1.] as this makes
 # training easier and torch by default only accepts floats as input
-train_loader, val_loader, test_loader = construct_dataloaders('./Data/samples.h5', train_batch_size=64,
-                                                              val_batch_size=256, test_batch_size=256,
-                                                              transform=torchvision.transforms.ToTensor())
+# setting num_workers to 17 here as I usually work with 18 CPUs on Snellius
+train_loader, val_loader, test_loader = construct_dataloaders('./Data/samples.h5', train_batch_size=256,
+                                                              val_batch_size=2048, test_batch_size=2048,
+                                                              transform=torchvision.transforms.ToTensor(),
+                                                              num_workers=17, pin_memory=True)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 writer = SummaryWriter()
@@ -35,7 +37,7 @@ for epoch in range(1, epochs+1):
     writer.add_scalar('Loss/train', epoch_train_loss)
     writer.add_scalar('Loss/validation', epoch_val_loss)
     writer.add_images('Originals', original_images.cpu()[:20], epoch)
-    writer.add_images('Reconstructions', recon_images.cpu[:20], epoch)
+    writer.add_images('Reconstructions', recon_images.cpu()[:20], epoch)
     train_loss.append(epoch_train_loss)
     val_loss.append(epoch_val_loss)
 
