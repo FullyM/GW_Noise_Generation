@@ -58,7 +58,6 @@ class ConvVAE(nn.Module):
         z = F.relu(self.tconv1(z))
         z = F.relu(self.tconv2(z))
         z = F.relu(self.tconv3(z))
-        print(z.shape)
         return z
 
 
@@ -112,4 +111,48 @@ def val(model, val_loader):
         test_loss /= counter
     return test_loss, recon_images, originals
 
+
+class EarlyStopping:
+    # Quick manual implementation of an Early Stopping for use in pytorch. Implementation inspired by
+    # https://github.com/Bjarten/early-stopping-pytorch/blob/master/pytorchtools.py
+    def __init__(self, wait=5, margin=0., file='saved_model.pt', verbose=False):
+        '''
+        Standard Early Stopping implementation with basic functionality
+        :param wait: int, optional, number of epochs to wait before stopping training early, default is 5
+        :param margin: flaot, optional, margin of increase that needs to be reached to be considered an improvement
+                       over previous best score, default 0.
+        :param file: str, optional, file or file path of the model save, default is current directory and
+                     saved_model.pt
+        :param verbose: bool, optional, if True prints out increases and saving of model, default False
+        '''
+        self.wait = wait
+        self.margin = margin
+        self.file = file
+        self.counter = 0
+        self.highscore = None
+        self.early_stop = False
+        self.verbose = verbose
+
+    def __call__(self, val_loss, model):
+        curr_score = val_loss
+
+        if self.highscore is None:
+            self.highscore = curr_score
+            self.save_model(val_loss, model)
+        elif self.highscore > curr_score + self.margin:
+            self.save_model(val_loss, model)
+            self.highscore = curr_score
+            self.counter = 0
+        else:
+            self.counter += 1
+            if self.verbose:
+                print(f'Early stopping: {self.counter} out of {self.wait}')
+            if self.counter >= self.wait:
+                self.early_stop = True
+
+    def save_model(self, val_loss, model):
+        if self.verbose:
+            print(f'Validation loss decreased from previous best {self.highscore:.5f} to {val_loss:.5f}. '
+                  f'Saving model checkpoint')
+        torch.save(model.state_dict(), self.file)
 
