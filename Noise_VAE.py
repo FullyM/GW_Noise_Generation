@@ -13,6 +13,10 @@ class ConvVAE(nn.Module):
         self.conv2 = nn.Conv2d(10, 20, kernel_size=5, stride=2, padding=2)
         self.conv3 = nn.Conv2d(20, 30, kernel_size=3, stride=2, padding=1)
         self.conv4 = nn.Conv2d(30, 40, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(10)
+        self.bn2 = nn.BatchNorm2d(20)
+        self.bn3 = nn.BatchNorm2d(30)
+        self.bn4 = nn.BatchNorm2d(40)
 
         self.fc1 = nn.Linear(4*4*40, 128)
         # self.fc2 = nn.Linear(128, 64)
@@ -23,6 +27,8 @@ class ConvVAE(nn.Module):
         self.tconv1 = nn.ConvTranspose2d(32, 16, kernel_size=10)
         self.tconv2 = nn.ConvTranspose2d(16, 8, kernel_size=8, stride=4)
         self.tconv3 = nn.ConvTranspose2d(8, 3, kernel_size=5, stride=3, padding=3)
+        self.bn5 = nn.BatchNorm2d(16)
+        self.bn6 = nn.BatchNorm2d(8)
 
     def reparametrize(self, mu, logstd):
         std = torch.exp(logstd)
@@ -41,13 +47,13 @@ class ConvVAE(nn.Module):
         return mu, log_std, z
 
     def enc(self, x):
-        x = F.relu(self.conv1(x))
+        x = F.relu(self.bn1(self.conv1(x)))
         x = F.max_pool2d(x, kernel_size=2)
-        x = F.relu(self.conv2(x))
+        x = F.relu(self.bn2(self.conv2(x)))
         x = F.max_pool2d(x, kernel_size=2)
-        x = F.relu(self.conv3(x))
+        x = F.relu(self.bn3(self.conv3(x)))
         x = F.max_pool2d(x, kernel_size=2)
-        x = F.relu(self.conv4(x))
+        x = F.relu(self.bn4(self.conv4(x)))
         x = x.flatten(start_dim=1)
         x = self.fc1(x)
         return x
@@ -55,8 +61,8 @@ class ConvVAE(nn.Module):
     def dec(self, z):
         b, l = z.shape
         z = z.view(b, l, 1, 1)
-        z = F.relu(self.tconv1(z))
-        z = F.relu(self.tconv2(z))
+        z = F.relu(self.bn5(self.tconv1(z)))
+        z = F.relu(self.bn6(self.tconv2(z)))
         z = F.relu(self.tconv3(z))
         return z
 

@@ -17,7 +17,7 @@ train_loader, val_loader, test_loader = construct_dataloaders('./Data/samples.h5
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 wait = 10
 stop = EarlyStopping(wait=wait, margin=0.1, file='./model_checkpoints/saved_model.pt', verbose=True)
-writer = SummaryWriter()
+writer = SummaryWriter(log_dir='./runs/lr2')
 
 model = Noise_VAE.ConvVAE().to(device)
 
@@ -32,8 +32,15 @@ for epoch in range(1, epochs+1):
     epoch_val_loss, recon_images, original_images = val(model, val_loader)
     writer.add_scalar('Loss/train', epoch_train_loss, epoch)
     writer.add_scalar('Loss/validation', epoch_val_loss, epoch)
-    writer.add_images('Originals', original_images.cpu()[:20], epoch)
-    writer.add_images('Reconstructions', recon_images.cpu()[:20], epoch)
+    writer.add_images('Originals', original_images.cpu()[:10], epoch)
+    writer.add_images('Reconstructions', recon_images.cpu()[:10], epoch)
+    total = 0
+    num_par = 0
+    for n, par in model.parameters():
+        if 'bias' not in n:
+            num_par += 1
+            total += par.data.grad.norm(2).item()
+    writer.add_scalar('Gradient Norm', total/num_par, epoch)
     stop(epoch_val_loss, model)
     if stop.early_stop:
         print(f'Training stopped early because Validation loss has not decreased in the past {wait} epochs')
