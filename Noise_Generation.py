@@ -17,7 +17,7 @@ train_loader, val_loader, test_loader = construct_dataloaders('./Data/samples.h5
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 wait = 10
 stop = EarlyStopping(wait=wait, margin=0.1, file='./model_checkpoints/saved_model.pt', verbose=True)
-writer = SummaryWriter(log_dir='./runs/lr2')
+writer = SummaryWriter(log_dir='./runs/gradient_log')
 
 model = Noise_VAE.ConvVAE().to(device)
 
@@ -36,10 +36,11 @@ for epoch in range(1, epochs+1):
     writer.add_images('Reconstructions', recon_images.cpu()[:10], epoch)
     total = 0
     num_par = 0
-    for n, par in model.parameters():
-        if 'bias' not in n:
+    for n, par in model.named_parameters():
+        if ('bias' not in n) and ('bn' not in n):  # batch norm parameters are not too important for model performance
             num_par += 1
-            total += par.data.grad.norm(2).item()
+            # TODO add individual layer parameters instead of mean over model for better overview
+            total += par.grad.abs().mean().item()
     writer.add_scalar('Gradient Norm', total/num_par, epoch)
     stop(epoch_val_loss, model)
     if stop.early_stop:
