@@ -38,8 +38,11 @@ for epoch in range(1, epochs+1):
     num_par = 0
     for n, par in model.named_parameters():
         if ('bias' not in n) and ('bn' not in n):  # batch norm parameters are not too important for model performance
+            # print(f'Gradients of parameter {n} have norm {par.grad.norm(2)}, mean {par.grad.abs().mean()}'
+                    # f' and max {par.grad.abs().max()}')
             num_par += 1
             # TODO add individual layer parameters instead of mean over model for better overview
+            # Looking at gradient mean without considering bias to judge if gradients explode or die out
             total += par.grad.abs().mean().item()
     writer.add_scalar('Gradient Norm', total/num_par, epoch)
     stop(epoch_val_loss, model)

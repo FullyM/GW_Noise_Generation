@@ -24,11 +24,13 @@ class ConvVAE(nn.Module):
         self.mu_f = nn.Linear(64, 32)
         self.logstd_f = nn.Linear(64, 32)
 
-        self.tconv1 = nn.ConvTranspose2d(32, 16, kernel_size=10)
-        self.tconv2 = nn.ConvTranspose2d(16, 8, kernel_size=8, stride=4)
-        self.tconv3 = nn.ConvTranspose2d(8, 3, kernel_size=5, stride=3, padding=3)
-        self.bn5 = nn.BatchNorm2d(16)
-        self.bn6 = nn.BatchNorm2d(8)
+        self.tconv1 = nn.ConvTranspose2d(32, 20, kernel_size=10)  # 10
+        self.tconv2 = nn.ConvTranspose2d(20, 10, kernel_size=8, stride=3)  # 35
+        self.tconv3 = nn.ConvTranspose2d(10, 5, kernel_size=5, stride=2, padding=4)  # 65
+        self.tconv4 = nn.ConvTranspose2d(5, 3, kernel_size=2, stride=2, padding=1)  # 128
+        self.bn5 = nn.BatchNorm2d(20)
+        self.bn6 = nn.BatchNorm2d(10)
+        self.bn7 = nn.BatchNorm2d(5)
 
     def reparametrize(self, mu, logstd):
         std = torch.exp(logstd)
@@ -63,7 +65,8 @@ class ConvVAE(nn.Module):
         z = z.view(b, l, 1, 1)
         z = F.relu(self.bn5(self.tconv1(z)))
         z = F.relu(self.bn6(self.tconv2(z)))
-        z = F.relu(self.tconv3(z))
+        z = F.relu(self.bn7(self.tconv3(z)))
+        z = F.relu(self.tconv4(z))
         return z
 
 
