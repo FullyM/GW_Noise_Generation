@@ -28,7 +28,7 @@ scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
 
 for epoch in range(1, epochs+1):
     print(f'Epoch {epoch} of {epochs}')
-    epoch_train_loss = train(model, train_loader, optimizer, epoch)
+    epoch_train_loss = train(model, train_loader, optimizer, epoch, clip=10)
     epoch_val_loss, recon_images, original_images = val(model, val_loader)
     writer.add_scalar('Loss/train', epoch_train_loss, epoch)
     writer.add_scalar('Loss/validation', epoch_val_loss, epoch)

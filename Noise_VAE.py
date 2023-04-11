@@ -17,9 +17,15 @@ class ConvVAE(nn.Module):
         self.bn2 = nn.BatchNorm2d(20)
         self.bn3 = nn.BatchNorm2d(30)
         self.bn4 = nn.BatchNorm2d(40)
+        self.drop1 = nn.Dropout(p=0.1)
+        self.drop2 = nn.Dropout(p=0.1)
+        self.drop3 = nn.Dropout(p=0.1)
+        self.drop4 = nn.Dropout(p=0.1)
 
         self.fc1 = nn.Linear(4*4*40, 128)
         # self.fc2 = nn.Linear(128, 64)
+        self.bn_lin1 = nn.BatchNorm1d(128)
+        self.drop_lin1 = nn.Dropout(p=0.1)
 
         self.mu_f = nn.Linear(64, 32)
         self.logstd_f = nn.Linear(64, 32)
@@ -31,6 +37,9 @@ class ConvVAE(nn.Module):
         self.bn5 = nn.BatchNorm2d(20)
         self.bn6 = nn.BatchNorm2d(10)
         self.bn7 = nn.BatchNorm2d(5)
+        self.drop5 = nn.Dropout(p=0.1)
+        self.drop6 = nn.Dropout(p=0.1)
+        self.drop7 = nn.Dropout(p=0.1)
 
     def reparametrize(self, mu, logstd):
         std = torch.exp(logstd)
@@ -50,22 +59,30 @@ class ConvVAE(nn.Module):
 
     def enc(self, x):
         x = F.relu(self.bn1(self.conv1(x)))
+        x = self.drop1(x)
         x = F.max_pool2d(x, kernel_size=2)
         x = F.relu(self.bn2(self.conv2(x)))
+        x = self.drop2(x)
         x = F.max_pool2d(x, kernel_size=2)
         x = F.relu(self.bn3(self.conv3(x)))
+        x = self.drop3(x)
         x = F.max_pool2d(x, kernel_size=2)
         x = F.relu(self.bn4(self.conv4(x)))
+        x = self.drop4(x)
         x = x.flatten(start_dim=1)
-        x = self.fc1(x)
+        x = self.bn_lin1(self.fc1(x))
+        x = self.drop_lin1(x)
         return x
 
     def dec(self, z):
         b, l = z.shape
         z = z.view(b, l, 1, 1)
         z = F.relu(self.bn5(self.tconv1(z)))
+        z = self.drop5(z)
         z = F.relu(self.bn6(self.tconv2(z)))
+        z = self.drop6(z)
         z = F.relu(self.bn7(self.tconv3(z)))
+        z = self.drop7(z)
         z = F.relu(self.tconv4(z))
         return z
 
@@ -75,7 +92,7 @@ def ELBO(mse, mu, logstd):
     return kl+mse
 
 
-def train(model, train_loader, optimizer, epoch):
+def train(model, train_loader, optimizer, epoch, clip=None):
     model.train()
     total_loss = 0.0
     counter = 0
@@ -89,6 +106,8 @@ def train(model, train_loader, optimizer, epoch):
         mse = F.mse_loss(rec, data, reduction='sum')
         loss = ELBO(mse, mu, logstd)
         loss.backward()
+        if clip is not None:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=clip)
         optimizer.step()
         total_loss += loss.item()/len(data)
         if batch_idx % 20 == 0:
