@@ -9,37 +9,45 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 class ConvVAE(nn.Module):
     def __init__(self):
         super(ConvVAE, self).__init__()
-        self.conv1 = nn.Conv2d(3, 10, kernel_size=9, padding=4)
-        self.conv2 = nn.Conv2d(10, 20, kernel_size=5, stride=2, padding=2)
-        self.conv3 = nn.Conv2d(20, 30, kernel_size=3, stride=2, padding=1)
-        self.conv4 = nn.Conv2d(30, 40, kernel_size=3, padding=1)
-        self.bn1 = nn.BatchNorm2d(10)
-        self.bn2 = nn.BatchNorm2d(20)
-        self.bn3 = nn.BatchNorm2d(30)
-        self.bn4 = nn.BatchNorm2d(40)
+        self.conv1 = nn.Conv2d(3, 12, kernel_size=9, padding=4)  # 128
+        self.conv2 = nn.Conv2d(12, 24, kernel_size=7, padding=3)  # 64
+        self.conv3 = nn.Conv2d(24, 36, kernel_size=5, padding=2)  # 32
+        self.conv4 = nn.Conv2d(36, 48, kernel_size=3, padding=1)  # 16
+        self.conv5 = nn.Conv2d(48, 60, kernel_size=3, padding=1)  # 8
+        self.bn1 = nn.BatchNorm2d(12)
+        self.bn2 = nn.BatchNorm2d(24)
+        self.bn3 = nn.BatchNorm2d(36)
+        self.bn4 = nn.BatchNorm2d(48)
+        self.bn5 = nn.BatchNorm2d(60)
         self.drop1 = nn.Dropout(p=0.1)
         self.drop2 = nn.Dropout(p=0.1)
         self.drop3 = nn.Dropout(p=0.1)
         self.drop4 = nn.Dropout(p=0.1)
-
-        self.fc1 = nn.Linear(4*4*40, 128)
-        # self.fc2 = nn.Linear(128, 64)
-        self.bn_lin1 = nn.BatchNorm1d(128)
-        self.drop_lin1 = nn.Dropout(p=0.1)
-
-        self.mu_f = nn.Linear(64, 32)
-        self.logstd_f = nn.Linear(64, 32)
-
-        self.tconv1 = nn.ConvTranspose2d(32, 20, kernel_size=10)  # 10
-        self.tconv2 = nn.ConvTranspose2d(20, 10, kernel_size=8, stride=3)  # 35
-        self.tconv3 = nn.ConvTranspose2d(10, 5, kernel_size=5, stride=2, padding=4)  # 65
-        self.tconv4 = nn.ConvTranspose2d(5, 3, kernel_size=2, stride=2, padding=1)  # 128
-        self.bn5 = nn.BatchNorm2d(20)
-        self.bn6 = nn.BatchNorm2d(10)
-        self.bn7 = nn.BatchNorm2d(5)
         self.drop5 = nn.Dropout(p=0.1)
-        self.drop6 = nn.Dropout(p=0.1)
-        self.drop7 = nn.Dropout(p=0.1)
+
+        self.fc1 = nn.Linear(8*8*60, 512)
+        self.fc2 = nn.Linear(512, 256)
+        self.bn_lin1 = nn.BatchNorm1d(512)
+        self.bn_lin2 = nn.BatchNorm1d(256)
+        self.drop_lin1 = nn.Dropout(p=0.1)
+        self.drop_lin2 = nn.Dropout(p=0.1)
+
+        self.mu_f = nn.Linear(128, 64)
+        self.logstd_f = nn.Linear(128, 64)
+
+        self.tconv1 = nn.ConvTranspose2d(64, 45, kernel_size=10)  # 10
+        self.tconv2 = nn.ConvTranspose2d(45, 30, kernel_size=9, stride=3, padding=3)  # 30
+        self.tconv3 = nn.ConvTranspose2d(30, 20, kernel_size=6, stride=2, padding=2)  # 60
+        self.tconv4 = nn.ConvTranspose2d(20, 10, kernel_size=6, stride=2)  # 124
+        self.tconv5 = nn.ConvTranspose2d(10, 3, kernel_size=5)  # 128
+        self.tbn1 = nn.BatchNorm2d(45)
+        self.tbn2 = nn.BatchNorm2d(30)
+        self.tbn3 = nn.BatchNorm2d(20)
+        self.tbn4 = nn.BatchNorm2d(10)
+        self.tdrop1 = nn.Dropout(p=0.1)
+        self.tdrop2 = nn.Dropout(p=0.1)
+        self.tdrop3 = nn.Dropout(p=0.1)
+        self.tdrop4 = nn.Dropout(p=0.1)
 
     def reparametrize(self, mu, logstd):
         std = torch.exp(logstd)
@@ -69,21 +77,28 @@ class ConvVAE(nn.Module):
         x = F.max_pool2d(x, kernel_size=2)
         x = F.relu(self.bn4(self.conv4(x)))
         x = self.drop4(x)
+        x = F.max_pool2d(x, kernel_size=2)
+        x = F.relu(self.bn5(self.conv5(x)))
+        x = self.drop5(x)
         x = x.flatten(start_dim=1)
-        x = self.bn_lin1(self.fc1(x))
+        x = F.relu(self.bn_lin1(self.fc1(x)))
         x = self.drop_lin1(x)
+        x = self.bn_lin2(self.fc2(x))
+        x = self.drop_lin2(x)
         return x
 
     def dec(self, z):
         b, l = z.shape
         z = z.view(b, l, 1, 1)
-        z = F.relu(self.bn5(self.tconv1(z)))
-        z = self.drop5(z)
-        z = F.relu(self.bn6(self.tconv2(z)))
-        z = self.drop6(z)
-        z = F.relu(self.bn7(self.tconv3(z)))
-        z = self.drop7(z)
-        z = F.relu(self.tconv4(z))
+        z = F.relu(self.tbn1(self.tconv1(z)))
+        z = self.tdrop1(z)
+        z = F.relu(self.tbn2(self.tconv2(z)))
+        z = self.tdrop2(z)
+        z = F.relu(self.tbn3(self.tconv3(z)))
+        z = self.tdrop3(z)
+        z = F.relu(self.tbn4(self.tconv4(z)))
+        z = self.tdrop4(z)
+        z = F.relu(self.tconv5(z))
         return z
 
 
@@ -143,15 +158,24 @@ def val(model, val_loader):
 class EarlyStopping:
     # Quick manual implementation of an Early Stopping for use in pytorch. Implementation inspired by
     # https://github.com/Bjarten/early-stopping-pytorch/blob/master/pytorchtools.py
-    def __init__(self, wait=5, margin=0., file='saved_model.pt', verbose=False):
+    def __init__(self, wait=5, margin=0., file='saved_model.pt', start_patience=0, verbose=False, scheduler=None,
+                 scheduler_wait=0):
         '''
-        Standard Early Stopping implementation with basic functionality
+        Standard Early Stopping implementation with basic functionality. Allows for passing of a learning rate
+        scheduler, so that the learning rate is changed first to try and progress training before the training is
+        stopped early. Will only do one learning rate step to try and lower the validation loss.
         :param wait: int, optional, number of epochs to wait before stopping training early, default is 5
         :param margin: flaot, optional, margin of increase that needs to be reached to be considered an improvement
                        over previous best score, default 0.
         :param file: str, optional, file or file path of the model save, default is current directory and
                      saved_model.pt
+        :param start_patience: int, optional, allows to set an initial number of epochs during which training will
+                               not be stopped early
         :param verbose: bool, optional, if True prints out increases and saving of model, default False
+        :param scheduler: expects a LRScheduler object, optional, allows to tie in LRS steps with EarlyStopping
+        :param scheduler_wait: int, optional, number of epochs without validation loss decrease before making a
+                               lr scheduler step, do this step multiple times if wait is a multiple of scheduler wait.
+                               Will only do 1 scheduler step so adjust the step size of the scheduler accordingly.
         '''
         self.wait = wait
         self.margin = margin
@@ -159,23 +183,42 @@ class EarlyStopping:
         self.counter = 0
         self.highscore = None
         self.early_stop = False
+        self.start_patience = start_patience
+        self.start_counter = 0
         self.verbose = verbose
+        self.scheduler = scheduler
+        self.scheduler_wait = scheduler_wait
+        self.step = 1
 
     def __call__(self, val_loss, model):
         curr_score = val_loss
 
-        if self.highscore is None:
+        if self.start_patience > self.start_counter:  # for the first epochs no early stopping will be used
+            self.start_counter += 1
+
+        elif self.highscore is None:
             self.highscore = curr_score
             self.save_model(val_loss, model)
-        elif self.highscore > curr_score + self.margin:
+
+        elif self.highscore*(1-self.margin) > curr_score:  # needs to be smaller by relative margin
             self.save_model(val_loss, model)
             self.highscore = curr_score
-            self.counter = 0
+            self.counter = 0  # reset counter
+            self.step = 0  # also reset learning rate step counter
+
         else:
             self.counter += 1
+            self.step += 1
             if self.verbose:
                 print(f'Early stopping: {self.counter} out of {self.wait}')
-            if self.counter >= self.wait:
+            # will make a lr scheduler step after scheduler wait epochs to improve stagnant training before termination
+            if (self.scheduler is not None) and (self.step >= self.scheduler_wait):
+                self.scheduler.step()  # make sure the scheduler step size is set appropriately
+                self.step = 0  # prevent the scheduler from taking the next step immediately
+                if self.verbose:
+                    print(f'Adjusting learning rate by factor {self.scheduler.gamma} as validation loss has not'
+                          f' improved in the last {self.scheduler_wait} epochs')
+            if self.counter >= self.wait:  # if training has not progressed set early stop flag
                 self.early_stop = True
 
     def save_model(self, val_loss, model):
