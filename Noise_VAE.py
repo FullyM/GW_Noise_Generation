@@ -25,24 +25,27 @@ class ConvVAE(nn.Module):
         self.drop4 = nn.Dropout(p=0.1)
         self.drop5 = nn.Dropout(p=0.1)
 
-        self.fc1 = nn.Linear(8*8*60, 512)
-        self.fc2 = nn.Linear(512, 256)
-        self.bn_lin1 = nn.BatchNorm1d(512)
-        self.bn_lin2 = nn.BatchNorm1d(256)
+        self.fc1 = nn.Linear(8*8*60, 1024)
+        self.fc2 = nn.Linear(1024, 512)
+        self.fc3 = nn.Linear(512, 256)
+        self.bn_lin1 = nn.BatchNorm1d(1024)
+        self.bn_lin2 = nn.BatchNorm1d(512)
+        self.bn_lin3 = nn.BatchNorm1d(256)
         self.drop_lin1 = nn.Dropout(p=0.1)
         self.drop_lin2 = nn.Dropout(p=0.1)
+        self.drop_lin3 = nn.Dropout(p=0.1)
 
-        self.mu_f = nn.Linear(128, 64)
-        self.logstd_f = nn.Linear(128, 64)
+        self.mu_f = nn.Linear(128, 32)
+        self.logstd_f = nn.Linear(128, 32)
 
-        self.tconv1 = nn.ConvTranspose2d(64, 45, kernel_size=10)  # 10
-        self.tconv2 = nn.ConvTranspose2d(45, 30, kernel_size=9, stride=3, padding=3)  # 30
-        self.tconv3 = nn.ConvTranspose2d(30, 20, kernel_size=6, stride=2, padding=2)  # 60
-        self.tconv4 = nn.ConvTranspose2d(20, 10, kernel_size=6, stride=2)  # 124
-        self.tconv5 = nn.ConvTranspose2d(10, 3, kernel_size=5)  # 128
-        self.tbn1 = nn.BatchNorm2d(45)
-        self.tbn2 = nn.BatchNorm2d(30)
-        self.tbn3 = nn.BatchNorm2d(20)
+        self.tconv1 = nn.ConvTranspose2d(32, 25, kernel_size=10)  # 10
+        self.tconv2 = nn.ConvTranspose2d(25, 20, kernel_size=9, stride=3, padding=2)  # 32
+        self.tconv3 = nn.ConvTranspose2d(20, 15, kernel_size=6, stride=2, padding=2)  # 64
+        self.tconv4 = nn.ConvTranspose2d(15, 10, kernel_size=4, stride=2, padding=1)  # 128
+        self.tconv5 = nn.ConvTranspose2d(10, 3, kernel_size=3, padding=1)  # 128
+        self.tbn1 = nn.BatchNorm2d(25)
+        self.tbn2 = nn.BatchNorm2d(20)
+        self.tbn3 = nn.BatchNorm2d(15)
         self.tbn4 = nn.BatchNorm2d(10)
         self.tdrop1 = nn.Dropout(p=0.1)
         self.tdrop2 = nn.Dropout(p=0.1)
@@ -83,8 +86,10 @@ class ConvVAE(nn.Module):
         x = x.flatten(start_dim=1)
         x = F.relu(self.bn_lin1(self.fc1(x)))
         x = self.drop_lin1(x)
-        x = self.bn_lin2(self.fc2(x))
+        x = F.relu(self.bn_lin2(self.fc2(x)))
         x = self.drop_lin2(x)
+        x = self.bn_lin3(self.fc3(x))
+        x = self.drop_lin3(x)
         return x
 
     def dec(self, z):

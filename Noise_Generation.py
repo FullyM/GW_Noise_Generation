@@ -15,14 +15,17 @@ train_loader, val_loader, test_loader = construct_dataloaders('./Data/samples.h5
                                                               num_workers=17, pin_memory=True)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-writer = SummaryWriter(log_dir='./runs/latent_64')
+writer = SummaryWriter(log_dir='./runs/small_kernel')
 
 model = Noise_VAE.ConvVAE().to(device)
 
 learning_rate = 0.01
 epochs = 500
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1, verbose=True)
+scheduler1 = optim.lr_scheduler.LinearLR(optimizer, start_factor=0.01, total_iters=10, verbose=True)
+scheduler2 = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1, verbose=True)
+scheduler = optim.lr_scheduler.SequentialLR(optimizer, schedulers=[scheduler1, scheduler2], milestones=[10],
+                                            verbose=True)
 wait = 10
 scheduler_wait = 5
 stop = EarlyStopping(wait=wait, margin=0.01, file='./model_checkpoints/saved_model.pt', verbose=True,
@@ -50,6 +53,6 @@ for epoch in range(1, epochs+1):
     stop(epoch_val_loss, model)
     if stop.early_stop:
         print(f'Training stopped early because Validation loss has not decreased in the past {wait} epochs')
-        print(f'Best validation loss achieved during training: {stop.highscore}, in epoch {epoch-wait}')
+        print(f'Best validation loss achieved during training: {stop.highscore:.4f}, in epoch {epoch-wait}')
         break
     scheduler.step()
