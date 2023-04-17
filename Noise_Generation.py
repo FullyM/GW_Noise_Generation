@@ -22,14 +22,15 @@ model = Noise_VAE.ConvVAE().to(device)
 learning_rate = 0.01
 epochs = 500
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-scheduler1 = optim.lr_scheduler.LinearLR(optimizer, start_factor=0.01, total_iters=10, verbose=True)
-scheduler2 = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1, verbose=True)
-scheduler = optim.lr_scheduler.SequentialLR(optimizer, schedulers=[scheduler1, scheduler2], milestones=[10],
+scheduler1 = optim.lr_scheduler.LinearLR(optimizer, start_factor=0.01, total_iters=5, verbose=True)
+scheduler2 = optim.lr_scheduler.LinearLR(optimizer, start_factor=1, end_factor=0.001, total_iters=10, verbose=True)
+scheduler = optim.lr_scheduler.SequentialLR(optimizer, schedulers=[scheduler1, scheduler2], milestones=[5],
                                             verbose=True)
-wait = 10
-scheduler_wait = 5
+scheduler_ES = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.5, verbose=True)
+wait = 5
+scheduler_wait = 2
 stop = EarlyStopping(wait=wait, margin=0.01, file='./model_checkpoints/saved_model.pt', verbose=True,
-                     start_patience=10)
+                     start_patience=15, scheduler=scheduler_ES, scheduler_wait=scheduler_wait)
 
 for epoch in range(1, epochs+1):
     print(f'Epoch {epoch} of {epochs}')
