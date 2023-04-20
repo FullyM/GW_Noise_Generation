@@ -1,5 +1,4 @@
 import torch
-import matplotlib.pyplot as plt
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -70,39 +69,39 @@ class ConvVAE(nn.Module):
 
     def enc(self, x):
         x = F.relu(self.bn1(self.conv1(x)))
-        x = self.drop1(x)
+        #x = self.drop1(x)
         x = F.max_pool2d(x, kernel_size=2)
         x = F.relu(self.bn2(self.conv2(x)))
-        x = self.drop2(x)
+        #x = self.drop2(x)
         x = F.max_pool2d(x, kernel_size=2)
         x = F.relu(self.bn3(self.conv3(x)))
-        x = self.drop3(x)
+        #x = self.drop3(x)
         x = F.max_pool2d(x, kernel_size=2)
         x = F.relu(self.bn4(self.conv4(x)))
-        x = self.drop4(x)
+        #x = self.drop4(x)
         x = F.max_pool2d(x, kernel_size=2)
         x = F.relu(self.bn5(self.conv5(x)))
-        x = self.drop5(x)
+        #x = self.drop5(x)
         x = x.flatten(start_dim=1)
         x = F.relu(self.bn_lin1(self.fc1(x)))
-        x = self.drop_lin1(x)
+        #x = self.drop_lin1(x)
         x = F.relu(self.bn_lin2(self.fc2(x)))
-        x = self.drop_lin2(x)
+        #x = self.drop_lin2(x)
         x = self.bn_lin3(self.fc3(x))
-        x = self.drop_lin3(x)
+        #x = self.drop_lin3(x)
         return x
 
     def dec(self, z):
         b, l = z.shape
         z = z.view(b, l, 1, 1)
         z = F.relu(self.tbn1(self.tconv1(z)))
-        z = self.tdrop1(z)
+        #z = self.tdrop1(z)
         z = F.relu(self.tbn2(self.tconv2(z)))
-        z = self.tdrop2(z)
+        #z = self.tdrop2(z)
         z = F.relu(self.tbn3(self.tconv3(z)))
-        z = self.tdrop3(z)
+        #z = self.tdrop3(z)
         z = F.relu(self.tbn4(self.tconv4(z)))
-        z = self.tdrop4(z)
+        #z = self.tdrop4(z)
         z = F.relu(self.tconv5(z))
         return z
 
