@@ -9,8 +9,8 @@ from torch.utils.tensorboard import SummaryWriter
 # Need to use ToTensor here in order to reshape the images into the correct shape and scale to [0, 1.] as this makes
 # training easier and torch by default only accepts floats as input
 # setting num_workers to 17 here as I usually work with 18 CPUs on Snellius
-train_loader, val_loader, test_loader = construct_dataloaders('./Data/samples.h5', train_batch_size=256,
-                                                              val_batch_size=2048, test_batch_size=2048,
+train_loader, val_loader, test_loader = construct_dataloaders('./Data/samples.h5', train_batch_size=64,
+                                                              val_batch_size=512, test_batch_size=512,
                                                               transform=torchvision.transforms.ToTensor(),
                                                               num_workers=17, pin_memory=True)
 
@@ -30,11 +30,11 @@ scheduler_ES = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.5, verb
 wait = 5
 scheduler_wait = 2
 stop = EarlyStopping(wait=wait, margin=0.01, file='./model_checkpoints/saved_model.pt', verbose=True,
-                     start_patience=15, scheduler=scheduler_ES, scheduler_wait=scheduler_wait)
+                     start_patience=50)#, scheduler=scheduler_ES, scheduler_wait=scheduler_wait)
 
 for epoch in range(1, epochs+1):
     print(f'Epoch {epoch} of {epochs}')
-    epoch_train_loss = train(model, train_loader, optimizer, epoch, clip=10)
+    epoch_train_loss = train(model, train_loader, optimizer, epoch, clip=None)
     epoch_val_loss, recon_images, original_images = val(model, val_loader)
     writer.add_scalar('Loss/train', epoch_train_loss, epoch)
     writer.add_scalar('Loss/validation', epoch_val_loss, epoch)
@@ -56,4 +56,4 @@ for epoch in range(1, epochs+1):
         print(f'Training stopped early because Validation loss has not decreased in the past {wait} epochs')
         print(f'Best validation loss achieved during training: {stop.highscore:.4f}, in epoch {epoch-wait}')
         break
-    scheduler.step()
+    #scheduler.step()
