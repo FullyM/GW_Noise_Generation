@@ -57,3 +57,4 @@ for epoch in range(1, epochs+1):
         print(f'Best validation loss achieved during training: {stop.highscore:.4f}, in epoch {epoch-wait}')
         break
     #scheduler.step()
+
