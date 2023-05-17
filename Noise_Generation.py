@@ -22,7 +22,7 @@ model = Noise_VAE.ConvVAE().to(device)
 learning_rate = 0.01
 epochs = 500
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-scheduler1 = optim.lr_scheduler.LinearLR(optimizer, start_factor=0.01, total_iters=5, verbose=True)
+scheduler1 = optim.lr_scheduler.LinearLR(optimizer, start_factor=1, total_iters=5, verbose=True)
 scheduler2 = optim.lr_scheduler.LinearLR(optimizer, start_factor=1, end_factor=0.001, total_iters=10, verbose=True)
 scheduler = optim.lr_scheduler.SequentialLR(optimizer, schedulers=[scheduler1, scheduler2], milestones=[5],
                                             verbose=True)
