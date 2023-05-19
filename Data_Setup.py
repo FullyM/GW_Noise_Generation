@@ -10,7 +10,7 @@ import numpy as np
 
 
 def plot_q(data, name, dir_name, q_range=(4, 64), whiten=True, f_duration=0.1, show=False, labels=False,
-           zoom=None, im_size=(1, 1), dpi=128, **kwargs):
+           zoom=None, im_size=(1, 1), dpi=128, gray=False, **kwargs):
     '''
     Function to calculate the Q-Transform of given gwpy.timeseries.Timeseries object and directly create and save a plot
     of the corresponding spectrogram. Has the option to either produce a mostly normal plot or produces an image of the
@@ -21,8 +21,6 @@ def plot_q(data, name, dir_name, q_range=(4, 64), whiten=True, f_duration=0.1, s
     :param dir_name: string, mandatory, name of the output directory the files will be stored in
     :param q_range: tuple of float, optional, range of q's to use for the transform, inverse relation to range of
                     frequencies displayed in the spectrogram, unrelated to f_range
-    :param f_range: tuple of floats, optional, range of frequencies to consider for the q-transform, can be specified in
-                    kwargs argument
     :param whiten: boolean, optional, if the data should be whitened before the q-transform
     :param f_duration: float, optional, length of the timeseries used to estimate the PSD for whitening
     :param show: boolean, optional, if set to True will show the plotted spectrogram
@@ -30,12 +28,18 @@ def plot_q(data, name, dir_name, q_range=(4, 64), whiten=True, f_duration=0.1, s
     :param zoom: tuple of floats, optional, can specify a time range for the spectrogram plot
     :param im_size: tuple of floats, optional, the size of the returned image
     :param dpi: int, optional, the dpi of the saved image
+    :param gray: bool, optional, set to True if the plots should be grayscale, i.e. 1 colour channel, defaults to False
     :return: gwpy.timeseries.Spectrogram object, containing the q-transformed input timeseries object
     '''
 
     q = data.q_transform(qrange=q_range, whiten=whiten, fduration=f_duration, **kwargs)
 
-    q_plot = q.plot(cmap='viridis', yscale='log')
+    if gray:
+        cmap = 'gray'
+    else:
+        cmap = 'viridis'
+
+    q_plot = q.plot(cmap=cmap, yscale='log')
     # this might be slightly illegal, forcing gwpy.plot object into matplotlib figure, might be the cause for the
     # memory leak mentioned below, though I don't know of a better way to do it, it works for now
     fig = plt.figure(q_plot, frameon=labels)  # frameon argument specifies if the figure has a frame or not
@@ -100,7 +104,7 @@ def sample_processing(detector, start_time, end_time, sample_duration, dir_name,
         plot_q(samples[i], name='sample_'+str(i), dir_name=dir_name, **q_kws)
 
 
-def convert_png2h5(img_dir, h5_name, im_size):
+def convert_png2h5(img_dir, h5_name, im_size, channels=3):
     '''
     Converts png files located in img_dir into one .h5 file. The file is a group with asssociated attribute
     length which is the total number of files read in, consisting of two datasets called 'samples' and 'labels'
@@ -117,15 +121,22 @@ def convert_png2h5(img_dir, h5_name, im_size):
 
     h5_file = h5_name+'.h5'
 
+    if channels==1:
+        IRM = torchvision.io.ImageReadMode.GRAY
+    elif channels==3:
+        IRM = torchvision.io.ImageReadMode.RGB
+    else:
+        raise Exception('Number of channels can only be 1 or 3 for grayscale or RGB respectively')
+
     n_files = len(glob.glob('./'+img_dir+'/*.png'))  # This scans ALL .png files contained in the given directory
 
     with h5py.File(h5_file, 'w') as h5:
-        img_ds = h5.create_dataset('./samples', shape=(n_files, img_height, img_width, 3),  # shape for RGB images
+        img_ds = h5.create_dataset('./samples', shape=(n_files, img_height, img_width, channels),
                                    dtype=np.uint8)  # uint8 better interacts with torchvision to_tensor
         label_ds = h5.create_dataset('./labels', shape=(n_files,), dtype=int)  # placeholder labels of image numbers
         h5.attrs['length'] = n_files
         for num, file in enumerate(glob.iglob('./'+img_dir+'/*.png')):
-            image = torchvision.io.read_image(file, mode=torchvision.io.ImageReadMode.RGB)  # hardcoded ReadMode
+            image = torchvision.io.read_image(file, mode=IRM)
             # torchvision read_image reads in the image as CxHxW but generally images should be read in as HxWxC
             # this unnecessary transposing is O(1) complexity so no computational cost
             image = image.transpose(1, 0)
