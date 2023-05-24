@@ -8,10 +8,10 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 class ConvVAE(nn.Module):
     def __init__(self):
         super(ConvVAE, self).__init__()
-        self.conv1 = nn.Conv2d(3, 6, kernel_size=3, padding=1)  # 128
-        self.conv1_2 = nn.Conv2d(6, 12, kernel_size=3, padding=1)  # 128
-        self.conv2 = nn.Conv2d(12, 18, kernel_size=3, padding=1)  # 64
-        self.conv2_2 = nn.Conv2d(18, 24, kernel_size=3, padding=1)  # 64
+        self.conv1 = nn.Conv2d(3, 6, kernel_size=7, padding=3)  # 128
+        self.conv1_2 = nn.Conv2d(6, 12, kernel_size=7, padding=3)  # 128
+        self.conv2 = nn.Conv2d(12, 18, kernel_size=5, padding=2)  # 64
+        self.conv2_2 = nn.Conv2d(18, 24, kernel_size=5, padding=2)  # 64
         self.conv3 = nn.Conv2d(24, 30, kernel_size=3, padding=1)  # 32
         self.conv3_2 = nn.Conv2d(30, 36, kernel_size=3, padding=1)  # 32
         self.conv4 = nn.Conv2d(36, 42, kernel_size=3, padding=1)  # 16
@@ -34,9 +34,9 @@ class ConvVAE(nn.Module):
         self.drop4 = nn.Dropout(p=0.1)
         self.drop5 = nn.Dropout(p=0.1)
 
-        self.fc1 = nn.Linear(8*8*60, 1024)
-        self.fc2 = nn.Linear(1024, 512)
-        self.fc3 = nn.Linear(512, 256)
+        #self.fc1 = nn.Linear(8*8*60, 1024)
+        #self.fc2 = nn.Linear(1024, 512)
+        #self.fc3 = nn.Linear(512, 256)
         self.bn_lin1 = nn.BatchNorm1d(1024)
         self.bn_lin2 = nn.BatchNorm1d(512)
         self.bn_lin3 = nn.BatchNorm1d(256)
@@ -44,16 +44,16 @@ class ConvVAE(nn.Module):
         self.drop_lin2 = nn.Dropout(p=0.1)
         self.drop_lin3 = nn.Dropout(p=0.1)
 
-        self.mu_f = nn.Linear(128, 32)
-        self.logstd_f = nn.Linear(128, 32)
+        self.mu_f = nn.Linear(30, 16)
+        self.logstd_f = nn.Linear(30, 16)
 
-        self.fc1_dec = nn.Linear(32, 60)
+        #self.fc1_dec = nn.Linear(16, 60)
         self.bn_declin1 = nn.BatchNorm1d(60)
 
-        self.tconv1 = nn.ConvTranspose2d(60, 54, kernel_size=3, padding=1)  # 8
-        self.tconv1_2 = nn.ConvTranspose2d(54, 48, kernel_size=3, padding=1)  # 8
-        self.tconv2 = nn.ConvTranspose2d(48, 42, kernel_size=3, padding=1)  # 16
-        self.tconv2_2 = nn.ConvTranspose2d(42, 36, kernel_size=3, padding=1)  # 16
+        self.tconv1 = nn.ConvTranspose2d(16, 54, kernel_size=7, padding=3)  # 8
+        self.tconv1_2 = nn.ConvTranspose2d(54, 48, kernel_size=7, padding=3)  # 8
+        self.tconv2 = nn.ConvTranspose2d(48, 42, kernel_size=5, padding=2)  # 16
+        self.tconv2_2 = nn.ConvTranspose2d(42, 36, kernel_size=5, padding=2)  # 16
         self.tconv3 = nn.ConvTranspose2d(36, 30, kernel_size=3, padding=1)  # 32
         self.tconv3_2 = nn.ConvTranspose2d(30, 24, kernel_size=3, padding=1)  # 32
         self.tconv4 = nn.ConvTranspose2d(24, 18, kernel_size=3, padding=1)  # 64
@@ -105,14 +105,15 @@ class ConvVAE(nn.Module):
         x = F.max_pool2d(x, kernel_size=2)
         x = F.relu(self.bn5(self.conv5(x)))
         x = F.relu(self.bn5_2(self.conv5_2(x)))
+        x = F.max_pool2d(x, kernel_size=8)
         x = x.flatten(start_dim=1)
-        x = F.relu(self.bn_lin1(self.fc1(x)))
-        x = F.relu(self.bn_lin2(self.fc2(x)))
-        x = self.bn_lin3(self.fc3(x))
+        #x = F.relu(self.bn_lin1(self.fc1(x)))
+        #x = F.relu(self.bn_lin2(self.fc2(x)))
+        #x = self.bn_lin3(self.fc3(x))
         return x
 
     def dec(self, z):
-        z = F.relu(self.bn_declin1(self.fc1_dec(z)))
+        #z = F.relu(self.bn_declin1(self.fc1_dec(z)))
         b, l = z.shape
         z = z.view(b, l, 1, 1)
         z = F.interpolate(z, mode='bilinear', scale_factor=8)
