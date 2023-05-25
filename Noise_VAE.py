@@ -8,7 +8,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 class ConvVAE(nn.Module):
     def __init__(self):
         super(ConvVAE, self).__init__()
-        self.conv1 = nn.Conv2d(3, 6, kernel_size=7, padding=3)  # 128
+        self.conv1 = nn.Conv2d(1, 6, kernel_size=7, padding=3)  # 128
         self.conv1_2 = nn.Conv2d(6, 12, kernel_size=7, padding=3)  # 128
         self.conv2 = nn.Conv2d(12, 18, kernel_size=5, padding=2)  # 64
         self.conv2_2 = nn.Conv2d(18, 24, kernel_size=5, padding=2)  # 64
@@ -59,7 +59,7 @@ class ConvVAE(nn.Module):
         self.tconv4 = nn.ConvTranspose2d(24, 18, kernel_size=3, padding=1)  # 64
         self.tconv4_2 = nn.ConvTranspose2d(18, 12, kernel_size=3, padding=1)  # 64
         self.tconv5 = nn.ConvTranspose2d(12, 6, kernel_size=3, padding=1)  # 128
-        self.tconv5_2 = nn.ConvTranspose2d(6, 3, kernel_size=3, padding=1)  # 128
+        self.tconv5_2 = nn.ConvTranspose2d(6, 1, kernel_size=3, padding=1)  # 128
         self.tbn1 = nn.BatchNorm2d(54)
         self.tbn1_2 = nn.BatchNorm2d(48)
         self.tbn2 = nn.BatchNorm2d(42)
