@@ -1,7 +1,7 @@
 import torchvision.transforms
 import Noise_VAE
 import torch
-from Noise_VAE import train, val, EarlyStopping
+from Noise_VAE import train, val, EarlyStopping, generate
 from Data_Setup import construct_dataloaders
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
@@ -58,3 +58,6 @@ for epoch in range(1, epochs+1):
         break
     #scheduler.step()
 
+model.eval()
+generations = generate(20, 16, model)
+writer.add_images('Generations', generations)

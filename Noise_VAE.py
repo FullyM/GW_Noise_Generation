@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -8,7 +9,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 class ConvVAE(nn.Module):
     def __init__(self):
         super(ConvVAE, self).__init__()
-        self.conv1 = nn.Conv2d(1, 6, kernel_size=7, padding=3)  # 128
+        self.conv1 = nn.Conv2d(3, 6, kernel_size=7, padding=3)  # 128
         self.conv1_2 = nn.Conv2d(6, 12, kernel_size=7, padding=3)  # 128
         self.conv2 = nn.Conv2d(12, 18, kernel_size=5, padding=2)  # 64
         self.conv2_2 = nn.Conv2d(18, 24, kernel_size=5, padding=2)  # 64
@@ -59,7 +60,7 @@ class ConvVAE(nn.Module):
         self.tconv4 = nn.ConvTranspose2d(24, 18, kernel_size=3, padding=1)  # 64
         self.tconv4_2 = nn.ConvTranspose2d(18, 12, kernel_size=3, padding=1)  # 64
         self.tconv5 = nn.ConvTranspose2d(12, 6, kernel_size=3, padding=1)  # 128
-        self.tconv5_2 = nn.ConvTranspose2d(6, 1, kernel_size=3, padding=1)  # 128
+        self.tconv5_2 = nn.ConvTranspose2d(6, 3, kernel_size=3, padding=1)  # 128
         self.tbn1 = nn.BatchNorm2d(54)
         self.tbn1_2 = nn.BatchNorm2d(48)
         self.tbn2 = nn.BatchNorm2d(42)
@@ -259,3 +260,24 @@ class EarlyStopping:
                   f'Saving model checkpoint')
         torch.save(model.state_dict(), self.file)
 
+
+def generate(n, d, model, gpu=True):
+    '''
+    This function will generate new samples given a pre-trained VAE model. It is assumed that the VAE prior follows a
+    multivariate standard gaussian with 0 covariance and unit diagonal, as this will be used to draw random samples.
+    Additionally, the model decoder is called with 'model.dec', meaning the model class needs a 'dec' member function,
+    which will do a forward pass through the decoder. For the specific setup compare to the 'dec' function implemented.
+    :param n: int, number of samples to generate. This will function as a batch that is fed through the decoder
+              of the model
+    :param d: int, latent space dimensionality of the given model
+    :param model: the pre-trained VAE model
+    :param gpu: bool, optional, if set to True will save the sampled latent space vector to the device gpu. Defaults to
+                True.
+    :return: Returns a batch of n sample images with their pixel information.
+    '''
+    z = np.random.multivariate_normal(np.zeros(d), np.diag(np.ones(d)), n)
+    z = torch.tensor(z, dtype=torch.float)
+    if gpu:
+        z = z.to(device)
+    gen_images = model.dec(z)
+    return gen_images
