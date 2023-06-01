@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -281,3 +283,33 @@ def generate(n, d, model, gpu=True):
         z = z.to(device)
     gen_images = model.dec(z)
     return gen_images
+
+
+def plot_latent(model, data_loader, n_batch):
+    '''
+    Function which allows to plot the distribution of latent space vectors in the latent space from input data after a
+    pass through the encoder and the sampling of the latent space vector. It uses t-SNE for dimensionality reduction of
+    the latent space vectors down to 2D for plotting purposes.
+    :param model: trained model to visualiise the latent space of
+    :param data_loader: pytorch.data.dataloader, dataloader which contains the data used for latent space visualisation
+    :param n_batch: int, number of batches of the dataloader that will be used to plot the sampled latent space vectors
+    :return: matplotlib.pyplot.figure, a matplotlib figure object for logging in tensorboard
+    '''
+    batch_count = 0
+    for data, target in data_loader:
+        batch_count += 1
+        latent = model.enc(data)
+        _, _, z = model.sample_z(latent)
+        z = z.detach().numpy()
+        if batch_count == 1:
+            latent_samples = z
+        else:
+            latent_samples = np.append(latent_samples, z, axis=0)
+        if batch_count == n_batch:
+            break
+    tsne_model = TSNE()
+    projections = tsne_model.fit_transform(latent_samples)
+    latent_plot = plt.scatter(projections[:,0], projections[:,1])
+    latent_figure = plt.gcf()  # get the current figure which the scatter plot was written to
+    return latent_figure  # return the figure with the plot for logging with tensorboard
+
