@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
-from torch.nn.init import kaiming_normal_ as kai
+from torchinfo import summary
 
 batch_size_train = 128
 batch_size_test = 256
@@ -64,18 +64,6 @@ class ConvVAE(nn.Module):
         self.tconv3 = nn.ConvTranspose2d(8, 4, kernel_size=4, stride=2)
         self.tconv4 = nn.ConvTranspose2d(4, 1, kernel_size=5, padding=2)
 
-        # weight initialisations
-        kai(self.conv1.weight)
-        kai(self.conv2.weight)
-        kai(self.fc1.weight)
-        kai(self.fc3.weight)
-        kai(self.tconv1.weight)
-        kai(self.tconv2.weight)
-        kai(self.tconv3.weight)
-        kai(self.tconv4.weight)
-        kai(self.mu_f.weight)
-        kai(self.log_std_f.weight)
-
     def reparametrization(self, mu, log_std):
         std = torch.exp(log_std)
         eps = torch.randn_like(log_std)
@@ -84,7 +72,7 @@ class ConvVAE(nn.Module):
 
     def forward_enc(self, x):
         # encoder
-        # first normal CNN architecture with 4 convolutions and 2 max pooling operations, all convolutions get activated by a relu
+        # first normal CNN architecture with 2 convolutions and 2 max pooling operations
         x = F.relu(self.conv1(x))
         x = F.max_pool2d(x, kernel_size=2)
         x = F.relu(self.conv2(x))
@@ -116,6 +104,11 @@ class ConvVAE(nn.Module):
         y = F.relu(self.tconv4(y))
 
         return y
+
+    def forward(self, x):
+        x = self.forward_enc(x)
+        mu, logstd, z = self.get_z(x)
+        x = self.forward_dec(z)
 
 
 class LinVAE(nn.Module):
@@ -161,7 +154,6 @@ class LinVAE(nn.Module):
 
 def final_loss(mse, mu, logstd):
     kl = -0.5*torch.sum(1+logstd-mu**2-2*torch.exp(logstd))
-    #kl = (sigma ** 2 + mu ** 2 - torch.log(sigma) - 1 / 2).sum()
     return kl+mse
 
 
@@ -255,9 +247,11 @@ plt.savefig('./ConvVAE/MNIST_originals')
 
 fig1 = plt.figure()
 plt.plot(train_loss)
-plt.plot(test_loss, c='orange')
-plt.xlabel('epoch')
-plt.savefig('./ConvVAE/Loss_plot')
+plt.plot(test_loss, c='green')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.legend(['Train Loss', 'Validation Loss'])
+plt.savefig('./ConvVAE/Loss_MNIST')
 
 def gen_new(D=32, N=40):
     z = np.random.multivariate_normal(np.zeros(D), np.diag(np.ones(D)), N)
@@ -291,73 +285,12 @@ def plot_latent(model, data_loader, num_batches=100, folder='./ConvVAE/'):
         z = z.to('cpu').detach().numpy()
         plt.scatter(z[:, 0], z[:, 1], c=target, cmap='tab10')
         if i > num_batches:
-            plt.colorbar()
             break
-    plt.savefig(folder+'latent_plot')
+    plt.colorbar()
+    plt.savefig(folder+'latent_MNIST')
 
 
 plot_latent(model, test_loader)
 
+summary(model, input_size=(batch_size_train, 1, 28, 28))
 
-
-model = LinVAE().to(device)
-
-learning_rate = 0.001
-epochs = 50
-optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-
-grid_images = []
-
-train_loss = []
-test_loss = []
-
-for epoch in range(1, epochs+1):
-    print(f'Epoch {epoch} of {epochs}')
-    epoch_train_loss = train(model, train_loader, optimizer, epoch)
-    epoch_test_loss, recon_images, original_images = test(model, test_loader)
-    train_loss.append(epoch_train_loss)
-    test_loss.append(epoch_test_loss)
-
-fig = plt.figure(figsize=(20, 10))
-for i in range(40):
-  plt.subplot(5,8,i+1)
-  plt.tight_layout()
-  recon_images = recon_images.cpu()
-  plt.imshow(recon_images[i][0], cmap='gray', interpolation='none')
-  #plt.title("Ground Truth: {}".format(example_targets[i]))
-  plt.xticks([])
-  plt.yticks([])
-plt.savefig('./LinVAE/MNIST_recon_lin')
-
-fig = plt.figure(figsize=(20, 10))
-for i in range(40):
-    plt.subplot(5,8,i+1)
-    plt.tight_layout()
-    original_images = original_images.cpu()
-    plt.imshow(original_images[i][0], cmap='gray', interpolation='none')
-    # plt.title("Ground Truth: {}".format(example_targets[i]))
-    plt.xticks([])
-    plt.yticks([])
-plt.savefig('./LinVAE/MNIST_originals_lin')
-
-fig1 = plt.figure()
-plt.plot(train_loss)
-plt.plot(test_loss, c='orange')
-plt.xlabel('epoch')
-plt.savefig('./LinVAE/Loss_plot_lin')
-
-plot_latent(model, test_loader, folder='./LinVAE/')
-
-generated_images = gen_new(D=2)
-generated_images = generated_images.cpu()
-generated_images = generated_images.detach()
-
-fig = plt.figure(figsize=(20, 10))
-for i in range(40):
-    plt.subplot(5,8,i+1)
-    plt.tight_layout()
-    plt.imshow(generated_images[i][0], cmap='gray', interpolation='none')
-    #plt.title("Ground Truth: {}".format(example_targets[i]))
-    plt.xticks([])
-    plt.yticks([])
-plt.savefig('./LinVAE/MNIST_generations')
